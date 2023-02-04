@@ -23,4 +23,6 @@ _duration format is: {\_}h{\_}m (for example 12h30m, or 1h1m, but not 1d12h)_
 
 ### Coming soon
 - Saving data on virtual server will be added.
-- Table of todos is going to be painted...
+
+### Examples
+![example](./todo-ex.png)

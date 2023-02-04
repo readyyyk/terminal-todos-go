@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/jedib0t/go-pretty/v6/text"
-	"github.com/ttacon/chalk"
 	"golang.org/x/exp/slices"
 	"io"
 	"os"
@@ -19,10 +18,8 @@ import (
 	"time"
 )
 
-var debStyle = chalk.Black.NewStyle().WithBackground(chalk.Yellow)
-
 func deb(data string) {
-	fmt.Println(debStyle.Style(data))
+	fmt.Println(text.BgYellow.Sprintf("%s", text.FgBlack.Sprintf("%s", data)))
 }
 func logError(err error) {
 	if err != nil {
@@ -165,17 +162,19 @@ var pref = prefixes{
 
 func (r *prefixes) colors(enable bool) {
 	if enable {
+		text.EnableColors()
 		pref = prefixes{
-			err:      chalk.Yellow.String() + " -x-> ",
-			def:      chalk.Green.String() + " ---> ",
-			inp:      chalk.Magenta.String() + "-> ",
-			reset:    chalk.Reset.String(),
-			diff:     chalk.Cyan.String(),
-			selector: chalk.Blue.String(),
+			err:      text.FgYellow.Sprintf("%s", " -x-> "), //chalk.Yellow.String()  + ,
+			def:      text.FgGreen.Sprintf("%s", " ---> "),  //chalk.Green.String() + " ---> ",
+			inp:      text.FgMagenta.Sprintf("%s", " -> "),  //chalk.Magenta.String() + "-> ",
+			reset:    text.Reset.Sprintf("%s", ""),          // chalk.Reset.String(),
+			diff:     text.FgCyan.Sprintf("%s", ""),         // chalk.Cyan.String(),
+			selector: text.FgBlue.Sprintf("%s", ""),         // chalk.Blue.String(),
 		}
 		fmt.Println(pref.def + "Colors enabled")
 	} else {
-		fmt.Print(chalk.Reset)
+		text.DisableColors()
+		//fmt.Print(chalk.Reset)
 		pref = prefixes{
 			err:      " -x-> ",
 			def:      " ---> ",
@@ -245,18 +244,47 @@ func (r *todoArray) get(type_ string) {
 		return
 	}
 }
+func fmtDuration(d time.Duration) string {
+	d = d.Round(time.Minute)
+	h := d / time.Hour
+	d -= h * time.Hour
+	m := d / time.Minute
+	return fmt.Sprintf("%02dh %02dm", h, m)
+}
 func (r *todoArray) list() {
 	tbl := table.NewWriter()
-	tbl.AppendHeader(table.Row{"ID", "Title", "Text", "State", "Startdate", "Deadline"})
+	tbl.AppendHeader(table.Row{"ID", "Title", "Text", "State", "time left", "Startdate", "Deadline"})
 	for _, el := range r.data {
 		//currentState := text.Colors{text.BgCyan, text.FgBlack}
-		tbl.AppendRow(table.Row{el.ID, el.Title, el.Text, el.State, el.Startdate, el.Deadline})
+
+		stateString := el.State
+		switch el.State {
+		case "passive":
+			stateString = text.FgHiBlack.Sprintf("%s", el.State)
+		case "in progress":
+			stateString = text.FgCyan.Sprintf("%s", el.State)
+		case "important":
+			stateString = text.FgYellow.Sprintf("%s", el.State)
+		case "done":
+			stateString = text.FgGreen.Sprintf("%s", el.State)
+		}
+
+		_, timeLeft, _ := validateDate(el.Deadline)
+		timeLeftString := fmtDuration(timeLeft) //.Round(time.Minute).String()
+		if timeLeft < time.Duration(0) {
+			timeLeftString = text.FgRed.Sprintf("%s", "time up")
+		} else if timeLeft < time.Hour*3 {
+			timeLeftString = text.FgYellow.Sprintf("%s", timeLeftString)
+		}
+
+		tbl.AppendRow(table.Row{el.ID, el.Title, el.Text, stateString, timeLeftString, el.Startdate, el.Deadline})
 		tbl.AppendSeparator()
 	}
-	tbl.SetCaption("github.com/readyyyk/terminal-todos")
+	tbl.SetCaption("github.com/readyyyk/terminal-todos-go")
 	tbl.SetStyle(table.StyleBold)
-	tbl.SetOutputMirror(os.Stdin)
-	fmt.Println(tbl.Render())
+	tbl.Style().Format.Header = text.FormatDefault
+
+	fmt.Println(pref.reset + tbl.Render())
 }
 func (r *todoArray) add(newTodo todo) {
 	r.data = append(r.data, newTodo)
@@ -277,11 +305,16 @@ func (r *todoArray) delete(id int) (found bool) {
 	return false
 }
 
+func notEnoughArgs() {
+	fmt.Println(pref.err+text.FgYellow.Sprint(`Not enough arguments, type "help" for help`), pref.reset)
+}
 func doRequest(query []string) {
 	//fmt.Println(debStyle.Style(strings.Join(query, ",")), pref.reset)
 	switch query[0] {
 	case "help":
-		fmt.Println(helpData.Render())
+		fmt.Println("\n" + helpData.Render() + "\n")
+		fmt.Println("datetime format is: dd.MM_hh:mm (d - day, M - month, h - hour, m - minute)")
+		fmt.Println("duration format is: {_}h{_}m (for example 12h30m, or 1h1m, but not 1d12h)")
 	case "exit":
 		fmt.Print(pref.reset)
 		os.Exit(0)
@@ -291,7 +324,7 @@ func doRequest(query []string) {
 		executeDoskey()
 	case "colors":
 		if len(query) < 2 {
-			fmt.Println(pref.err+`Not enough arguments, type "help" for help`, pref.reset)
+			notEnoughArgs()
 			break
 		}
 		if query[1] == "1" || query[1] == "en" || query[1] == "enable" {
@@ -309,7 +342,8 @@ func doRequest(query []string) {
 		todos.list()
 	case "add":
 		if len(query) < 4 {
-			fmt.Println(pref.err+`Not enough arguments, type "help" for help`, pref.reset)
+			notEnoughArgs()
+			//fmt.Println(pref.err+`Not enough arguments, type "help" for help`, pref.reset)
 			break
 		}
 		tempId := 0
@@ -345,7 +379,8 @@ func doRequest(query []string) {
 		fmt.Println(pref.def+"Successfully added todo", pref.reset)
 	case "delete":
 		if len(query) < 2 {
-			fmt.Println(pref.err+`Not enough arguments, type "help" for help`, pref.reset)
+			notEnoughArgs()
+			//fmt.Println(pref.err+`Not enough arguments, type "help" for help`, pref.reset)
 			break
 		}
 		tempId, err := strconv.Atoi(query[1])
@@ -360,9 +395,15 @@ func doRequest(query []string) {
 		fmt.Println(pref.err+"Can't find todo with", pref.selector+"{id} "+query[1], pref.reset)
 	case "edit": // id field value
 		if len(query) < 4 {
-			fmt.Println(pref.err+`Not enough arguments, type "help" for help`, pref.reset)
+			notEnoughArgs()
+			//fmt.Println(pref.err+`Not enough arguments, type "help" for help`, pref.reset)
 			break
 		}
+
+		if query[2] == "State" {
+			query[3] = strings.ReplaceAll(query[3], "_", " ")
+		}
+
 		if tempId, err := strconv.Atoi(query[1]); err != nil {
 			fmt.Println(pref.err+"Wrong input, input a valid", pref.selector+"ID", pref.reset)
 			break
@@ -398,7 +439,7 @@ func doRequest(query []string) {
 			}
 		}
 	default:
-		fmt.Println(pref.err+"Wrong query", pref.reset)
+		fmt.Println(pref.err+text.FgYellow.Sprint("Wrong query"), pref.reset)
 	}
 }
 
@@ -429,11 +470,11 @@ func init() {
 		{"delete", "{ID}", "deletes todo"},
 		{"edit", "{ID} {Field} {Value}", "edits todo"},
 	})
-	helpData.SetCaption("datetime format is: dd.MM_hh:mm (d - day, M - month, h - hour, m - minute)")
 	helpData.SetStyle(table.StyleLight)
 	helpData.Style().Options.SeparateRows = true
 	helpData.SetColumnConfigs([]table.ColumnConfig{
 		{Number: 1, Align: text.AlignRight},
+		{Number: 2, Align: text.AlignCenter},
 	})
 	helpData.SetStyle(table.StyleLight)
 	helpData.Style().Options.DrawBorder = false
@@ -451,7 +492,7 @@ func init() {
 	todos.get("json")
 }
 func main() {
-	defer fmt.Println(chalk.Reset)
+	//defer fmt.Println(chalk.Reset)
 	for {
 		fmt.Print("\n" + pref.inp)
 		query := getInput()
