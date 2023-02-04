@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/jedib0t/go-pretty/v6/table"
+	"github.com/jedib0t/go-pretty/v6/text"
 	"github.com/ttacon/chalk"
 	"golang.org/x/exp/slices"
 	"io"
@@ -49,7 +50,7 @@ func executeDoskey() {
 
 	cmd := exec.Command("doskey", "todos="+path+"/main.exe")
 	err = cmd.Run()
-	logError(err)
+	//logError(err)
 
 	doskeyFile.rewrite("todos=" + path + "/main.exe")
 
@@ -60,7 +61,9 @@ func executeDoskey() {
 
 	cmd = exec.Command("reg", "add", `"HKCU\Software\Microsoft\Command Processor"`, "/v", "Autorun", "/d", `"doskey /macrofile=`+doskeyFile.path+`"`, "/f")
 	err = cmd.Run()
+
 	logError(err)
+	return
 }
 
 type file struct {
@@ -116,6 +119,7 @@ var settingsFile file
 const dateTimeFormat = "02.01_15:04"
 
 var todoStates []string
+var helpData table.Writer
 
 func validateDate(value string) (isBefore bool, diff time.Duration, customError string) {
 	utcDiff := time.Now().Hour() - time.Now().UTC().Hour()
@@ -276,6 +280,8 @@ func (r *todoArray) delete(id int) (found bool) {
 func doRequest(query []string) {
 	//fmt.Println(debStyle.Style(strings.Join(query, ",")), pref.reset)
 	switch query[0] {
+	case "help":
+		fmt.Println(helpData.Render())
 	case "exit":
 		fmt.Print(pref.reset)
 		os.Exit(0)
@@ -412,6 +418,32 @@ func init() {
 		path:         path + "/settings.json",
 		defaultValue: `{"colors":"0"}`,
 	}
+	helpData = table.NewWriter()
+	helpData.AppendRows([]table.Row{
+		{"exit", "", ""},
+		{"help", "", "prints help"},
+		{"command", "", "program can be executed from any directory using `todos`"},
+		{"colors", "1|0|enable|disable", "using to enable or disable color usage in program"},
+		{"ls|list", "", "list all stored todos"},
+		{"add", "{Title} {Text} {Deadline} (t)", "adds new todo, in case you enter duration {_}h{_}m type `t` in the end"},
+		{"delete", "{ID}", "deletes todo"},
+		{"edit", "{ID} {Field} {Value}", "edits todo"},
+	})
+	helpData.SetCaption("datetime format is: dd.MM_hh:mm (d - day, M - month, h - hour, m - minute)")
+	helpData.SetStyle(table.StyleLight)
+	helpData.Style().Options.SeparateRows = true
+	helpData.SetColumnConfigs([]table.ColumnConfig{
+		{Number: 1, Align: text.AlignRight},
+	})
+	helpData.SetStyle(table.StyleLight)
+	helpData.Style().Options.DrawBorder = false
+	helpData.Style().Options.SeparateColumns = true
+	helpData.Style().Options.SeparateRows = true
+
+	//helpData.SetColumnConfigs([]table.ColumnConfig{
+	//	{Number: 2, AutoMerge: true},
+	//})
+	//helpData.SetOutputMirror(os.Stdin)
 
 	logError(json.Unmarshal(settingsFile.read(), &settingsData))
 	doRequest([]string{"colors", settingsData.Colors})
