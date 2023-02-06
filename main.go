@@ -5,9 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/jedib0t/go-pretty/v6/table"
-	"github.com/jedib0t/go-pretty/v6/text"
-	"golang.org/x/exp/slices"
 	"io"
 	"os"
 	"os/exec"
@@ -16,10 +13,20 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/jedib0t/go-pretty/v6/table"
+	"github.com/jedib0t/go-pretty/v6/text"
+	"golang.org/x/exp/slices"
 )
 
+func logWarning(data string) {
+	fmt.Print(pref.err + text.FgYellow.Sprint(data))
+}
+func logSuccess(data string) {
+	fmt.Print(pref.def + text.FgGreen.Sprint(data))
+}
 func deb(data string) {
-	fmt.Println(text.BgYellow.Sprintf("%s", text.FgBlack.Sprintf("%s", data)))
+	fmt.Println(text.BgYellow.Sprint(text.FgBlack.Sprint(data)))
 }
 func logError(err error) {
 	if err != nil {
@@ -138,53 +145,40 @@ func validateDate(value string) (isBefore bool, diff time.Duration, customError 
 var path = ""
 
 type prefixes struct {
-	err      string
-	def      string
-	inp      string
-	reset    string
-	diff     string
-	selector string
+	err string
+	def string
+	inp string
 
-	yellow string
-	green  string
-	grey   string
+	diffColor     text.Color
+	selectorColor text.Color
+	// diff(oldValue, newValue string) string
+	// selector(field, value string) string
+	// colors(enable bool)
 }
 
 var pref = prefixes{
-	err:      " -x-> ",
-	def:      " ---> ",
-	inp:      "-> ",
-	reset:    "",
-	diff:     "",
-	selector: "",
-	// colors(enable bool)
+	err: text.FgYellow.Sprint(" -x-> "),
+	def: text.FgGreen.Sprint(" ---> "),
+	inp: text.FgMagenta.Sprint(" -> "),
+
+	diffColor:     text.FgCyan,
+	selectorColor: text.FgBlue,
 }
 
 func (r *prefixes) colors(enable bool) {
 	if enable {
 		text.EnableColors()
-		pref = prefixes{
-			err:      text.FgYellow.Sprintf("%s", " -x-> "), //chalk.Yellow.String()  + ,
-			def:      text.FgGreen.Sprintf("%s", " ---> "),  //chalk.Green.String() + " ---> ",
-			inp:      text.FgMagenta.Sprintf("%s", " -> "),  //chalk.Magenta.String() + "-> ",
-			reset:    text.Reset.Sprintf("%s", ""),          // chalk.Reset.String(),
-			diff:     text.FgCyan.Sprintf("%s", ""),         // chalk.Cyan.String(),
-			selector: text.FgBlue.Sprintf("%s", ""),         // chalk.Blue.String(),
-		}
-		fmt.Println(pref.def + "Colors enabled")
+		logSuccess("Colors enabled\n")
 	} else {
 		text.DisableColors()
-		//fmt.Print(chalk.Reset)
-		pref = prefixes{
-			err:      " -x-> ",
-			def:      " ---> ",
-			inp:      "-> ",
-			reset:    "",
-			diff:     "",
-			selector: "",
-		}
-		fmt.Println(pref.def + "Colors disabled")
+		logSuccess("Colors disabled\n")
 	}
+}
+func (r *prefixes) diff(oldValue, newValue string) string {
+	return r.diffColor.Sprintf("%s -> %s", oldValue, newValue)
+}
+func (r *prefixes) selector(data string) string {
+	return r.selectorColor.Sprint(data)
 }
 
 type settings struct {
@@ -237,14 +231,13 @@ func (r *todoArray) get(type_ string) {
 		dataBytes := dataFile.read()
 		err := json.Unmarshal(dataBytes, &todos.data)
 		logError(err)
-		fmt.Println(pref.def+"Successfully read data file", pref.reset)
 		return
 	default:
 		logError(errors.New("wrong get query type"))
 		return
 	}
 }
-func fmtDuration(d time.Duration) string {
+func formatDuration(d time.Duration) string {
 	d = d.Round(time.Minute)
 	h := d / time.Hour
 	d -= h * time.Hour
@@ -253,38 +246,40 @@ func fmtDuration(d time.Duration) string {
 }
 func (r *todoArray) list() {
 	tbl := table.NewWriter()
-	tbl.AppendHeader(table.Row{"ID", "Title", "Text", "State", "time left", "Startdate", "Deadline"})
+	tbl.AppendHeader(table.Row{text.FgHiBlack.Sprint("ID"), "Title", "Text", "State", text.FgHiBlack.Sprint("time left"), text.FgHiBlack.Sprint("Startdate"), "Deadline"})
 	for _, el := range r.data {
 		//currentState := text.Colors{text.BgCyan, text.FgBlack}
 
-		stateString := el.State
+		//stateString := el.State
 		switch el.State {
 		case "passive":
-			stateString = text.FgHiBlack.Sprintf("%s", el.State)
+			el.State = text.FgHiBlack.Sprint(el.State)
 		case "in progress":
-			stateString = text.FgCyan.Sprintf("%s", el.State)
+			el.State = text.FgCyan.Sprint(el.State)
 		case "important":
-			stateString = text.FgYellow.Sprintf("%s", el.State)
+			el.State = text.FgYellow.Sprint(el.State)
 		case "done":
-			stateString = text.FgGreen.Sprintf("%s", el.State)
+			el.State = text.FgGreen.Sprint(el.State)
 		}
 
 		_, timeLeft, _ := validateDate(el.Deadline)
-		timeLeftString := fmtDuration(timeLeft) //.Round(time.Minute).String()
+		timeLeftString := formatDuration(timeLeft) //.Round(time.Minute).String()
 		if timeLeft < time.Duration(0) {
-			timeLeftString = text.FgRed.Sprintf("%s", "time up")
+			timeLeftString = text.FgRed.Sprint("time up")
+			el.Deadline = text.FgRed.Sprint(el.Deadline)
 		} else if timeLeft < time.Hour*3 {
-			timeLeftString = text.FgYellow.Sprintf("%s", timeLeftString)
+			timeLeftString = text.FgYellow.Sprint(timeLeftString)
+			el.Deadline = text.FgYellow.Sprint(el.Deadline)
 		}
 
-		tbl.AppendRow(table.Row{el.ID, el.Title, el.Text, stateString, timeLeftString, el.Startdate, el.Deadline})
+		tbl.AppendRow(table.Row{text.FgHiBlack.Sprint(el.ID), el.Title, el.Text, el.State, timeLeftString, el.Startdate, el.Deadline})
 		tbl.AppendSeparator()
 	}
 	tbl.SetCaption("github.com/readyyyk/terminal-todos-go")
 	tbl.SetStyle(table.StyleBold)
 	tbl.Style().Format.Header = text.FormatDefault
 
-	fmt.Println(pref.reset + tbl.Render())
+	fmt.Println(tbl.Render())
 }
 func (r *todoArray) add(newTodo todo) {
 	r.data = append(r.data, newTodo)
@@ -306,20 +301,18 @@ func (r *todoArray) delete(id int) (found bool) {
 }
 
 func notEnoughArgs() {
-	fmt.Println(pref.err+text.FgYellow.Sprint(`Not enough arguments, type "help" for help`), pref.reset)
+	logWarning("Not enough arguments, type `help` for help\n")
 }
 func doRequest(query []string) {
-	//fmt.Println(debStyle.Style(strings.Join(query, ",")), pref.reset)
 	switch query[0] {
 	case "help":
 		fmt.Println("\n" + helpData.Render() + "\n")
 		fmt.Println("datetime format is: dd.MM_hh:mm (d - day, M - month, h - hour, m - minute)")
 		fmt.Println("duration format is: {_}h{_}m (for example 12h30m, or 1h1m, but not 1d12h)")
 	case "exit":
-		fmt.Print(pref.reset)
 		os.Exit(0)
 	case "path":
-		fmt.Println(pref.def+path, pref.reset)
+		fmt.Println(pref.def + path)
 	case "command":
 		executeDoskey()
 	case "colors":
@@ -334,7 +327,7 @@ func doRequest(query []string) {
 			pref.colors(false)
 			settingsFile.rewrite(`{"colors":"0"}`)
 		} else {
-			fmt.Println(pref.err+"Wrong query args", pref.reset)
+			logWarning("Wrong query args")
 		}
 	case "ls":
 		todos.list()
@@ -343,7 +336,6 @@ func doRequest(query []string) {
 	case "add":
 		if len(query) < 4 {
 			notEnoughArgs()
-			//fmt.Println(pref.err+`Not enough arguments, type "help" for help`, pref.reset)
 			break
 		}
 		tempId := 0
@@ -364,39 +356,38 @@ func doRequest(query []string) {
 			logError(err)
 			newTodo.Deadline = time.Now().Add(dur).Format(dateTimeFormat)
 			todos.add(newTodo)
-			fmt.Println(pref.def+"Successfully added todo", pref.reset)
+			logSuccess("Successfully added todo\n")
 			break
 		}
 		if isBefore, _, customError := validateDate(query[3]); len(customError) > 0 {
-			fmt.Println(pref.err+customError, pref.reset)
+			logWarning(customError)
 			break
 		} else if isBefore {
-			fmt.Println(pref.err+"Date is before now", pref.reset)
+			logWarning("Date is before now")
 			break
 		}
 		newTodo.Deadline = query[3]
 		todos.add(newTodo)
-		fmt.Println(pref.def+"Successfully added todo", pref.reset)
+		logSuccess("Successfully added todo\n")
 	case "delete":
 		if len(query) < 2 {
 			notEnoughArgs()
-			//fmt.Println(pref.err+`Not enough arguments, type "help" for help`, pref.reset)
 			break
 		}
 		tempId, err := strconv.Atoi(query[1])
 		if err != nil {
-			fmt.Println(pref.err+"Wrong input, input a number", pref.reset)
+			logWarning("Wrong input, input a number")
 			break
 		}
 		if todos.delete(tempId) {
-			fmt.Println(pref.def+"Successfully deleted todo", pref.reset)
+			logSuccess("Successfully deleted todo\n")
 			break
 		}
-		fmt.Println(pref.err+"Can't find todo with", pref.selector+"{id} "+query[1], pref.reset)
-	case "edit": // id field value
+		logWarning("Can't find todo with ")
+		fmt.Print(pref.selector("id="+query[1]), "\n")
+	case "edit":
 		if len(query) < 4 {
 			notEnoughArgs()
-			//fmt.Println(pref.err+`Not enough arguments, type "help" for help`, pref.reset)
 			break
 		}
 
@@ -405,41 +396,45 @@ func doRequest(query []string) {
 		}
 
 		if tempId, err := strconv.Atoi(query[1]); err != nil {
-			fmt.Println(pref.err+"Wrong input, input a valid", pref.selector+"ID", pref.reset)
+			logWarning("Wrong input, input a valid ")
+			fmt.Print(pref.selector("ID"), "\n")
 			break
 		} else if query[2] == "ID" || query[2] == "Startdate" {
-			fmt.Println(pref.err+"Can't edit this field", pref.reset)
+			logWarning("Can't edit this field\n")
 			break
 		} else if isBefore, _, err := validateDate(query[3]); len(err) > 0 && query[2] == "Deadline" {
-			fmt.Println(pref.err+"Error parsing date", pref.reset)
+			logWarning("Error parsing date\n")
 			break
 		} else if isBefore && query[2] == "Deadline" {
-			fmt.Println(pref.err+"Date is before now", pref.reset)
+			logWarning("Date is before now\n")
 			break
 		} else if validState := slices.IndexFunc(todoStates, func(r string) bool { return r == query[3] }); validState == -1 && query[2] == "State" {
-			fmt.Println(pref.err+"Wrong input, input valid todo state", pref.reset)
+			logWarning("Wrong input, input valid todo state\n")
 			break
 		} else {
 			for i, el := range todos.data {
 				if el.ID == tempId {
 					newTodo, oldValue, customError := el.edit(query[2], query[3])
 					if len(customError) > 0 {
-						fmt.Println(pref.err+err, pref.selector+query[2], pref.reset)
+						logWarning(err)
+						fmt.Print(" "+pref.selector(query[2]), "\n")
 						break
 					}
 					todos.data[i] = newTodo
 					tempData, err := json.MarshalIndent(todos.data, "", "\t")
 					logError(err)
 					dataFile.rewrite(string(tempData))
-					fmt.Println(pref.def+"Successfully edited todo with", pref.selector+"{ID} "+query[1], pref.diff+oldValue+" -> "+query[3], pref.reset)
+					logSuccess("Successfully edited todo with ")
+					fmt.Print(pref.selector("{ID}="+query[1]), " ", pref.diff(oldValue, query[3]), "\n")
 					break
 				} else if i == len(todos.data)-1 {
-					fmt.Println(pref.err+"Can't find todo with", pref.selector+"{id} "+query[1], pref.reset)
+					logWarning("Can't find todo with ")
+					fmt.Print(pref.selector("{id}="+query[1]), "\n")
 				}
 			}
 		}
 	default:
-		fmt.Println(pref.err+text.FgYellow.Sprint("Wrong query"), pref.reset)
+		logWarning("Wrong query\n")
 	}
 }
 
@@ -449,8 +444,6 @@ func init() {
 	todoStates = []string{"passive", "in progress", "important", "done"}
 	path = strings.ReplaceAll(filepath.Dir(ex), `\`, `/`)
 
-	//fmt.Println(debStyle.Style(path))
-
 	dataFile = file{
 		path:         path + "/data.json",
 		defaultValue: "[\n]",
@@ -459,6 +452,7 @@ func init() {
 		path:         path + "/settings.json",
 		defaultValue: `{"colors":"0"}`,
 	}
+
 	helpData = table.NewWriter()
 	helpData.AppendRows([]table.Row{
 		{"exit", "", ""},
@@ -470,29 +464,21 @@ func init() {
 		{"delete", "{ID}", "deletes todo"},
 		{"edit", "{ID} {Field} {Value}", "edits todo"},
 	})
-	helpData.SetStyle(table.StyleLight)
-	helpData.Style().Options.SeparateRows = true
 	helpData.SetColumnConfigs([]table.ColumnConfig{
 		{Number: 1, Align: text.AlignRight},
 		{Number: 2, Align: text.AlignCenter},
 	})
 	helpData.SetStyle(table.StyleLight)
-	helpData.Style().Options.DrawBorder = false
-	helpData.Style().Options.SeparateColumns = true
 	helpData.Style().Options.SeparateRows = true
-
-	//helpData.SetColumnConfigs([]table.ColumnConfig{
-	//	{Number: 2, AutoMerge: true},
-	//})
-	//helpData.SetOutputMirror(os.Stdin)
+	helpData.Style().Options.DrawBorder = false
 
 	logError(json.Unmarshal(settingsFile.read(), &settingsData))
 	doRequest([]string{"colors", settingsData.Colors})
 
 	todos.get("json")
+	logSuccess("Successfully read data file\n")
 }
 func main() {
-	//defer fmt.Println(chalk.Reset)
 	for {
 		fmt.Print("\n" + pref.inp)
 		query := getInput()

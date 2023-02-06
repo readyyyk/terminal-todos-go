@@ -22,7 +22,11 @@ _duration format is: {\_}h{\_}m (for example 12h30m, or 1h1m, but not 1d12h)_
 > Calling command `command` causes program sleeping, you should stop program with `Ctrl + C`, but `todos` is set.
 
 ### Coming soon
-- Saving data on virtual server will be added.
+- Saving data on virtual server.
+- Deleting multiple todos using 1 command.
+- Clear method (deletes all todos with "done" state)
+- Sort method (sorts listed todos using some field)
+- Customisation (such as colors, log prefixes, and other)
 
 ### Examples
 ![example](./todo-ex.png)
