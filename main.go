@@ -287,17 +287,26 @@ func (r *todoArray) add(newTodo todo) {
 	logError(err)
 	dataFile.rewrite(string(data))
 }
-func (r *todoArray) delete(id int) (found bool) {
-	for i, el := range r.data {
-		if el.ID == id {
-			r.data = append(r.data[:i], r.data[i+1:]...)
-			data, err := json.MarshalIndent(r.data, "", "\t")
-			logError(err)
-			dataFile.rewrite(string(data))
-			return true
+func (r *todoArray) delete(id []int) (found []bool, ids []int) {
+	//found = []bool{}
+	for _, deleteAble := range id {
+		for i, el := range r.data {
+			if el.ID == deleteAble {
+				r.data = append(r.data[:i], r.data[i+1:]...)
+				data, err := json.MarshalIndent(r.data, "", "\t")
+				logError(err)
+				dataFile.rewrite(string(data))
+				found = append(found, true)
+				ids = append(ids, deleteAble)
+			}
+		}
+		if len(ids) == 0 || ids[len(ids)-1] != deleteAble {
+			found = append(found, false)
+			ids = append(ids, deleteAble)
 		}
 	}
-	return false
+
+	return found, ids
 }
 
 func notEnoughArgs() {
@@ -374,17 +383,26 @@ func doRequest(query []string) {
 			notEnoughArgs()
 			break
 		}
-		tempId, err := strconv.Atoi(query[1])
-		if err != nil {
-			logWarning("Wrong input, input a number")
-			break
+		var idArray []int
+		for i, el := range query {
+			if i > 0 {
+				tempId, err := strconv.Atoi(el)
+				if err != nil {
+					logWarning("Wrong input, input a number\n")
+					continue
+				}
+				idArray = append(idArray, tempId)
+			}
 		}
-		if todos.delete(tempId) {
-			logSuccess("Successfully deleted todo\n")
-			break
+		foundArray, ids := todos.delete(idArray)
+		for i, found := range foundArray {
+			if found {
+				logSuccess("Successfully deleted todo\n")
+			} else {
+				logWarning("Can't find todo with ")
+				fmt.Print(pref.selector("id="+strconv.Itoa(ids[i])), "\n")
+			}
 		}
-		logWarning("Can't find todo with ")
-		fmt.Print(pref.selector("id="+query[1]), "\n")
 	case "edit":
 		if len(query) < 4 {
 			notEnoughArgs()
@@ -461,7 +479,7 @@ func init() {
 		{"colors", "1|0|enable|disable", "using to enable or disable color usage in program"},
 		{"ls|list", "", "list all stored todos"},
 		{"add", "{Title} {Text} {Deadline} (t)", "adds new todo, in case you enter duration {_}h{_}m type `t` in the end"},
-		{"delete", "{ID}", "deletes todo"},
+		{"delete", "{ID_1 ID_2 ID_3...}", "deletes todo"},
 		{"edit", "{ID} {Field} {Value}", "edits todo"},
 	})
 	helpData.SetColumnConfigs([]table.ColumnConfig{

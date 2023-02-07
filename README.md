@@ -12,7 +12,7 @@ Now to start using app u should start ***main.exe*** from app directory and type
 | colors     | 1 / 0 / enable / disable      | using to enable or disable color usage in program                        |
 | ls // list |                               | list all stored todos                                                    |
 | add        | {Title} {Text} {Deadline} (t) | adds new todo, in case you enter duration {\_}h{\_}m type "t" in the end |
-| delete     | {ID}                          | deletes todo                                                             |
+| delete     | {ID\_1 ID\_2 ID\_3...}        | deletes all todos with written ids                                       |
 | edit       | {ID} {Field} {Value}          | edits todo                                                               |
 
 _datetime format is: dd.MM_hh:mm (d - day, M - month, h - hour, m - minute)_
@@ -23,7 +23,6 @@ _duration format is: {\_}h{\_}m (for example 12h30m, or 1h1m, but not 1d12h)_
 
 ### Coming soon
 - Saving data on virtual server.
-- Deleting multiple todos using 1 command.
 - Clear method (deletes all todos with "done" state)
 - Sort method (sorts listed todos using some field)
 - Customisation (such as colors, log prefixes, and other)
