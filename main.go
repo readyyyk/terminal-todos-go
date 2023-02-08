@@ -3,134 +3,76 @@ package main
 import (
 	"bufio"
 	"encoding/json"
-	"errors"
 	"fmt"
-	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
-	"reflect"
 	"strconv"
 	"strings"
 	"time"
+
+	"todos/files"
+	"todos/logs"
+	"todos/logs/prefixes"
+	"todos/todoClasses"
 
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/jedib0t/go-pretty/v6/text"
 	"golang.org/x/exp/slices"
 )
 
-func logWarning(data string) {
-	fmt.Print(pref.err + text.FgYellow.Sprint(data))
-}
-func logSuccess(data string) {
-	fmt.Print(pref.def + text.FgGreen.Sprint(data))
-}
-func deb(data string) {
-	fmt.Println(text.BgYellow.Sprint(text.FgBlack.Sprint(data)))
-}
-func logError(err error) {
-	if err != nil {
-		panic(err)
-	}
-	return
-}
 func getInput() []string {
 	reader := bufio.NewScanner(os.Stdin)
 	reader.Scan()
-	logError(reader.Err())
+	logs.LogError(reader.Err())
 
 	return strings.Split(reader.Text(), " ")
 }
 
 func executeDoskey() {
-	localPath := "C:/bat"
+	localPath := path
 
-	doskeyFile := file{
-		path:         localPath + "/macros.doskey",
-		defaultValue: "",
+	doskeyFile := files.File{
+		Path:         localPath + "/macros.doskey",
+		DefaultValue: "",
 	}
 
 	err := os.Mkdir(localPath, 0644)
 
-	cmd := exec.Command("doskey", "todos="+path+"/main.exe")
+	cmd := exec.Command("doskey", "todos="+path+"/todos.exe")
 	err = cmd.Run()
-	//logError(err)
+	//logs.LogError(err)
 
-	doskeyFile.rewrite("todos=" + path + "/main.exe")
+	err = doskeyFile.Rewrite("todos=" + path + "/todos.exe")
+	logs.LogError(err)
 
 	//reg delete "HKEY_CURRENT_USER\Software\Microsoft\Command Processor" /v Autorun
-	cmd = exec.Command("reg", "delete", `"HKCU\Software\Microsoft\Command Processor"`, "/v", "Autorun")
+	cmd = exec.Command("reg", "delete", `"HKCU\Software\Microsoft\Command Processor"`, "/v", "Autorun", "/f")
 	err = cmd.Run()
-	logError(err)
+	logs.LogError(err)
 
-	cmd = exec.Command("reg", "add", `"HKCU\Software\Microsoft\Command Processor"`, "/v", "Autorun", "/d", `"doskey /macrofile=`+doskeyFile.path+`"`, "/f")
+	cmd = exec.Command("reg", "add", `"HKCU\Software\Microsoft\Command Processor"`, "/v", "Autorun", "/d", `"doskey /macrofile=`+doskeyFile.Path+`"`)
 	err = cmd.Run()
-
-	logError(err)
+	logs.LogError(err)
 	return
 }
 
-type file struct {
-	path         string
-	defaultValue string
-	// create()
-	// read()
-	// rewrite(value string)
-}
+var dataFile files.File
+var settingsFile files.File
 
-func (r *file) create() (created bool) {
-	if _, err := os.Stat(r.path); errors.Is(err, os.ErrNotExist) {
-		file_, err := os.Create(r.path)
-		logError(err)
-		file_, err = os.Open(r.path)
-		logError(err)
-		err = os.WriteFile(r.path, []byte(r.defaultValue), 0644)
-		logError(err)
-		err = file_.Close()
-		logError(err)
-		return true
-	}
-	return false
-}
-func (r *file) read() (data []byte) {
-	if r.create() {
-		return []byte(r.defaultValue)
-	}
-	file_, err := os.Open(r.path)
-	logError(err)
-	data, err = io.ReadAll(file_)
-	logError(err)
-	err = file_.Close()
-	logError(err)
-	return data
-}
-func (r *file) rewrite(value string) {
-	if r.create() {
-		r.rewrite(value)
-	}
+const DateTimeFormat = "02.01_15:04"
 
-	file_, err := os.Open(r.path)
-	logError(err)
-	err = os.WriteFile(r.path, []byte(value), 0644)
-	logError(err)
-	err = file_.Close()
-	logError(err)
-}
-
-var dataFile file
-var settingsFile file
-
-const dateTimeFormat = "02.01_15:04"
-
-var todoStates []string
+var TodoStates []string
 var helpData table.Writer
+
+var Todos todos.TodoArray
 
 func validateDate(value string) (isBefore bool, diff time.Duration, customError string) {
 	utcDiff := time.Now().Hour() - time.Now().UTC().Hour()
 
-	date, err := time.Parse(dateTimeFormat, value)
+	date, err := time.Parse(DateTimeFormat, value)
 	if err != nil {
-		//logError(err)
+		//logs.LogError(err)
 		return false, time.Duration(0), "Wrong datetime format (dd.MM_hh:mm)"
 	}
 	date = date.AddDate(time.Now().Year(), 0, 0)
@@ -144,174 +86,12 @@ func validateDate(value string) (isBefore bool, diff time.Duration, customError 
 
 var path = ""
 
-type prefixes struct {
-	err string
-	def string
-	inp string
-
-	diffColor     text.Color
-	selectorColor text.Color
-	// diff(oldValue, newValue string) string
-	// selector(field, value string) string
-	// colors(enable bool)
-}
-
-var pref = prefixes{
-	err: text.FgYellow.Sprint(" -x-> "),
-	def: text.FgGreen.Sprint(" ---> "),
-	inp: text.FgMagenta.Sprint(" -> "),
-
-	diffColor:     text.FgCyan,
-	selectorColor: text.FgBlue,
-}
-
-func (r *prefixes) colors(enable bool) {
-	if enable {
-		text.EnableColors()
-		logSuccess("Colors enabled\n")
-	} else {
-		text.DisableColors()
-		logSuccess("Colors disabled\n")
-	}
-}
-func (r *prefixes) diff(oldValue, newValue string) string {
-	return r.diffColor.Sprintf("%s -> %s", oldValue, newValue)
-}
-func (r *prefixes) selector(data string) string {
-	return r.selectorColor.Sprint(data)
-}
-
 type settings struct {
 	Colors string
 }
 
 var settingsData settings
 
-type todo struct {
-	ID        int
-	Title     string
-	Text      string
-	State     string
-	Startdate string
-	Deadline  string
-	// delete() bool // todo
-	// edit(field string, value string)
-	// getFields() []string
-}
-
-func (r todo) edit(field string, value string) (newTodo todo, oldValue string, customError string) {
-
-	temp := reflect.ValueOf(&r).Elem().FieldByName(field)
-	if !temp.CanSet() {
-		return r, "", "filed can't be assigned"
-	}
-	oldValue = temp.String()
-	temp.SetString(value)
-	//deb(temp.String())
-	//data, _ := json.MarshalIndent(r, "", " ")
-	//deb(string(data))
-
-	return r, oldValue, ""
-}
-
-type todoArray struct {
-	data []todo
-	// get()
-	// add(newTodo)
-	// delete(id int) bool todo: move method to todo class
-	// list()
-	// drop()
-}
-
-var todos = todoArray{[]todo{}}
-
-func (r *todoArray) get(type_ string) {
-	switch type_ {
-	case "json":
-		dataBytes := dataFile.read()
-		err := json.Unmarshal(dataBytes, &todos.data)
-		logError(err)
-		return
-	default:
-		logError(errors.New("wrong get query type"))
-		return
-	}
-}
-func formatDuration(d time.Duration) string {
-	d = d.Round(time.Minute)
-	h := d / time.Hour
-	d -= h * time.Hour
-	m := d / time.Minute
-	return fmt.Sprintf("%02dh %02dm", h, m)
-}
-func (r *todoArray) list() {
-	tbl := table.NewWriter()
-	tbl.AppendHeader(table.Row{text.FgHiBlack.Sprint("ID"), "Title", "Text", "State", text.FgHiBlack.Sprint("time left"), text.FgHiBlack.Sprint("Startdate"), "Deadline"})
-	for _, el := range r.data {
-		//currentState := text.Colors{text.BgCyan, text.FgBlack}
-
-		//stateString := el.State
-		switch el.State {
-		case "passive":
-			el.State = text.FgHiBlack.Sprint(el.State)
-		case "in progress":
-			el.State = text.FgCyan.Sprint(el.State)
-		case "important":
-			el.State = text.FgYellow.Sprint(el.State)
-		case "done":
-			el.State = text.FgGreen.Sprint(el.State)
-		}
-
-		_, timeLeft, _ := validateDate(el.Deadline)
-		timeLeftString := formatDuration(timeLeft) //.Round(time.Minute).String()
-		if timeLeft < time.Duration(0) {
-			timeLeftString = text.FgRed.Sprint("time up")
-			el.Deadline = text.FgRed.Sprint(el.Deadline)
-		} else if timeLeft < time.Hour*3 {
-			timeLeftString = text.FgYellow.Sprint(timeLeftString)
-			el.Deadline = text.FgYellow.Sprint(el.Deadline)
-		}
-
-		tbl.AppendRow(table.Row{text.FgHiBlack.Sprint(el.ID), el.Title, el.Text, el.State, timeLeftString, el.Startdate, el.Deadline})
-		tbl.AppendSeparator()
-	}
-	tbl.SetCaption("github.com/readyyyk/terminal-todos-go")
-	tbl.SetStyle(table.StyleBold)
-	tbl.Style().Format.Header = text.FormatDefault
-
-	fmt.Println(tbl.Render())
-}
-func (r *todoArray) add(newTodo todo) {
-	r.data = append(r.data, newTodo)
-	data, err := json.MarshalIndent(r.data, "", "\t")
-	logError(err)
-	dataFile.rewrite(string(data))
-}
-func (r *todoArray) delete(id []int) (found []bool, ids []int) {
-	//found = []bool{}
-	for _, deleteAble := range id {
-		for i, el := range r.data {
-			if el.ID == deleteAble {
-				r.data = append(r.data[:i], r.data[i+1:]...)
-				data, err := json.MarshalIndent(r.data, "", "\t")
-				logError(err)
-				dataFile.rewrite(string(data))
-				found = append(found, true)
-				ids = append(ids, deleteAble)
-			}
-		}
-		if len(ids) == 0 || ids[len(ids)-1] != deleteAble {
-			found = append(found, false)
-			ids = append(ids, deleteAble)
-		}
-	}
-
-	return found, ids
-}
-
-func notEnoughArgs() {
-	logWarning("Not enough arguments, type `help` for help\n")
-}
 func doRequest(query []string) {
 	switch query[0] {
 	case "help":
@@ -321,66 +101,75 @@ func doRequest(query []string) {
 	case "exit":
 		os.Exit(0)
 	case "path":
-		fmt.Println(pref.def + path)
+		logs.LogSuccess(path, "\n")
 	case "command":
 		executeDoskey()
+		logs.LogSuccess("Command `todos` set")
 	case "colors":
 		if len(query) < 2 {
-			notEnoughArgs()
+			logs.NotEnoughArgs()
 			break
 		}
-		if query[1] == "1" || query[1] == "en" || query[1] == "enable" {
-			pref.colors(true)
-			settingsFile.rewrite(`{"colors":"1"}`)
-		} else if query[1] == "0" || query[1] == "da" || query[1] == "disable" {
-			pref.colors(false)
-			settingsFile.rewrite(`{"colors":"0"}`)
+		if query[1] == "1" || query[1] == "enable" {
+			prefixes.Pref.Colors(true)
+			logs.LogSuccess("Colors enabled\n")
+			err := settingsFile.Rewrite(`{"colors":"1"}`)
+			logs.LogError(err)
+		} else if query[1] == "0" || query[1] == "disable" {
+			prefixes.Pref.Colors(false)
+			logs.LogSuccess("Colors disabled\n")
+			err := settingsFile.Rewrite(`{"colors":"0"}`)
+			logs.LogError(err)
 		} else {
-			logWarning("Wrong query args")
+			logs.LogWarning("Wrong query args")
 		}
 	case "ls":
-		todos.list()
+		Todos.List(validateDate)
 	case "list":
-		todos.list()
+		Todos.List(validateDate)
 	case "add":
 		if len(query) < 4 {
-			notEnoughArgs()
+			logs.NotEnoughArgs()
 			break
 		}
 		tempId := 0
-		if len(todos.data) != 0 {
-			tempId = todos.data[len(todos.data)-1].ID + 1
+		if len(Todos.Data) != 0 {
+			tempId = Todos.Data[len(Todos.Data)-1].ID + 1
 		}
 
-		newTodo := todo{
+		newTodo := todos.Todo{
 			ID:        tempId,
 			Title:     strings.ReplaceAll(query[1], "_", " "),
 			Text:      strings.ReplaceAll(query[2], "_", " "),
 			State:     "passive",
-			Startdate: time.Now().Format(dateTimeFormat),
+			Startdate: time.Now().Format(DateTimeFormat),
 		}
 
 		if len(query) == 5 && query[4] == "t" {
 			dur, err := time.ParseDuration(query[3])
-			logError(err)
-			newTodo.Deadline = time.Now().Add(dur).Format(dateTimeFormat)
-			todos.add(newTodo)
-			logSuccess("Successfully added todo\n")
+			logs.LogError(err)
+			newTodo.Deadline = time.Now().Add(dur).Format(DateTimeFormat)
+			Todos.Add(newTodo)
+			logs.LogSuccess("Successfully added Todo\n")
 			break
 		}
 		if isBefore, _, customError := validateDate(query[3]); len(customError) > 0 {
-			logWarning(customError)
+			logs.LogWarning(customError)
 			break
 		} else if isBefore {
-			logWarning("Date is before now")
+			logs.LogWarning("Date is before now")
 			break
 		}
 		newTodo.Deadline = query[3]
-		todos.add(newTodo)
-		logSuccess("Successfully added todo\n")
+		Todos.Add(newTodo)
+		data, err := json.MarshalIndent(Todos.Data, "", "\t")
+		logs.LogError(err)
+		err = dataFile.Rewrite(string(data))
+		logs.LogError(err)
+		logs.LogSuccess("Successfully added Todo\n")
 	case "delete":
 		if len(query) < 2 {
-			notEnoughArgs()
+			logs.NotEnoughArgs()
 			break
 		}
 		var idArray []int
@@ -388,24 +177,30 @@ func doRequest(query []string) {
 			if i > 0 {
 				tempId, err := strconv.Atoi(el)
 				if err != nil {
-					logWarning("Wrong input, input a number\n")
+					logs.LogWarning("Wrong input, input a number\n")
 					continue
 				}
 				idArray = append(idArray, tempId)
 			}
 		}
-		foundArray, ids := todos.delete(idArray)
+		foundArray, ids := Todos.Delete(idArray)
+
+		data, err := json.MarshalIndent(Todos.Data, "", "\t")
+		logs.LogError(err)
+		err = dataFile.Rewrite(string(data))
+		logs.LogError(err)
+
 		for i, found := range foundArray {
 			if found {
-				logSuccess("Successfully deleted todo\n")
+				logs.LogSuccess("Successfully deleted Todo\n")
 			} else {
-				logWarning("Can't find todo with ")
-				fmt.Print(pref.selector("id="+strconv.Itoa(ids[i])), "\n")
+				logs.LogWarning("Can't find Todo with ")
+				fmt.Print(prefixes.Pref.Selector("id="+strconv.Itoa(ids[i])), "\n")
 			}
 		}
-	case "edit":
+	case "Edit":
 		if len(query) < 4 {
-			notEnoughArgs()
+			logs.NotEnoughArgs()
 			break
 		}
 
@@ -414,73 +209,80 @@ func doRequest(query []string) {
 		}
 
 		if tempId, err := strconv.Atoi(query[1]); err != nil {
-			logWarning("Wrong input, input a valid ")
-			fmt.Print(pref.selector("ID"), "\n")
+			logs.LogWarning("Wrong input, input a valid ")
+			fmt.Print(prefixes.Pref.Selector("ID"), "\n")
 			break
 		} else if query[2] == "ID" || query[2] == "Startdate" {
-			logWarning("Can't edit this field\n")
+			logs.LogWarning("Can't Edit this field\n")
 			break
 		} else if isBefore, _, err := validateDate(query[3]); len(err) > 0 && query[2] == "Deadline" {
-			logWarning("Error parsing date\n")
+			logs.LogWarning("Error parsing date\n")
 			break
 		} else if isBefore && query[2] == "Deadline" {
-			logWarning("Date is before now\n")
+			logs.LogWarning("Date is before now\n")
 			break
-		} else if validState := slices.IndexFunc(todoStates, func(r string) bool { return r == query[3] }); validState == -1 && query[2] == "State" {
-			logWarning("Wrong input, input valid todo state\n")
+		} else if validState := slices.IndexFunc(TodoStates, func(r string) bool { return r == query[3] }); validState == -1 && query[2] == "State" {
+			logs.LogWarning("Wrong input, input valid Todo state\n")
 			break
 		} else {
-			for i, el := range todos.data {
+			for i, el := range Todos.Data {
 				if el.ID == tempId {
-					newTodo, oldValue, customError := el.edit(query[2], query[3])
+					newTodo, oldValue, customError := el.Edit(query[2], query[3])
 					if len(customError) > 0 {
-						logWarning(err)
-						fmt.Print(" "+pref.selector(query[2]), "\n")
+						logs.LogWarning(err)
+						fmt.Print(" "+prefixes.Pref.Selector(query[2]), "\n")
 						break
 					}
-					todos.data[i] = newTodo
-					tempData, err := json.MarshalIndent(todos.data, "", "\t")
-					logError(err)
-					dataFile.rewrite(string(tempData))
-					logSuccess("Successfully edited todo with ")
-					fmt.Print(pref.selector("{ID}="+query[1]), " ", pref.diff(oldValue, query[3]), "\n")
+					Todos.Data[i] = newTodo
+					tempData, err := json.MarshalIndent(Todos.Data, "", "\t")
+					logs.LogError(err)
+					err = dataFile.Rewrite(string(tempData))
+					logs.LogError(err)
+					logs.LogSuccess("Successfully edited Todo with ")
+					fmt.Print(prefixes.Pref.Selector("{ID}="+query[1]), " ", prefixes.Pref.Diff(oldValue, query[3]), "\n")
 					break
-				} else if i == len(todos.data)-1 {
-					logWarning("Can't find todo with ")
-					fmt.Print(pref.selector("{id}="+query[1]), "\n")
+				} else if i == len(Todos.Data)-1 {
+					logs.LogWarning("Can't find Todo with ")
+					fmt.Print(prefixes.Pref.Selector("{id}="+query[1]), "\n")
 				}
 			}
 		}
 	default:
-		logWarning("Wrong query\n")
+		logs.LogWarning("Wrong query\n")
 	}
 }
 
 func init() {
 	ex, err := os.Executable()
-	logError(err)
-	todoStates = []string{"passive", "in progress", "important", "done"}
+	logs.LogError(err)
+	TodoStates = []string{"passive", "in progress", "important", "done"}
 	path = strings.ReplaceAll(filepath.Dir(ex), `\`, `/`)
 
-	dataFile = file{
-		path:         path + "/data.json",
-		defaultValue: "[\n]",
+	dataFile = files.File{
+		Path:         path + "/Data.json",
+		DefaultValue: "[\n]",
 	}
-	settingsFile = file{
-		path:         path + "/settings.json",
-		defaultValue: `{"colors":"0"}`,
+	settingsFile = files.File{
+		Path:         path + "/settings.json",
+		DefaultValue: `{"colors":"0"}`,
+	}
+
+	Todos = todos.TodoArray{
+		Data:     []todos.Todo{},
+		DataFile: dataFile,
+		Origin:   "",
 	}
 
 	helpData = table.NewWriter()
 	helpData.AppendRows([]table.Row{
 		{"exit", "", ""},
 		{"help", "", "prints help"},
-		{"command", "", "program can be executed from any directory using `todos`"},
+		{"command", "", "program can be executed from any directory using `Todos`"},
 		{"colors", "1|0|enable|disable", "using to enable or disable color usage in program"},
-		{"ls|list", "", "list all stored todos"},
-		{"add", "{Title} {Text} {Deadline} (t)", "adds new todo, in case you enter duration {_}h{_}m type `t` in the end"},
-		{"delete", "{ID_1 ID_2 ID_3...}", "deletes todo"},
-		{"edit", "{ID} {Field} {Value}", "edits todo"},
+		{"ls|list", "", "list all stored Todos"},
+		{"add", "{Title} {Text} {Deadline} (t)", "adds new Todo, in case you enter duration {_}h{_}m type `t` in the end"},
+		{"delete", "{ID_1 ID_2 ID_3...}", "deletes Todo"},
+		{"Edit", "{ID} {Field} {Value}", "edits Todo"},
 	})
 	helpData.SetColumnConfigs([]table.ColumnConfig{
 		{Number: 1, Align: text.AlignRight},
@@ -490,15 +292,17 @@ func init() {
 	helpData.Style().Options.SeparateRows = true
 	helpData.Style().Options.DrawBorder = false
 
-	logError(json.Unmarshal(settingsFile.read(), &settingsData))
+	tempData, err := settingsFile.Read()
+	logs.LogError(err)
+	logs.LogError(json.Unmarshal(tempData, &settingsData))
 	doRequest([]string{"colors", settingsData.Colors})
 
-	todos.get("json")
-	logSuccess("Successfully read data file\n")
+	Todos.Get("json")
+	logs.LogSuccess("Successfully read Data file\n")
 }
 func main() {
 	for {
-		fmt.Print("\n" + pref.inp)
+		fmt.Print("\n" + prefixes.Pref.Inp)
 		query := getInput()
 
 		doRequest(query)

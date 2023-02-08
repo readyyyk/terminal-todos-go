@@ -19,13 +19,14 @@ _datetime format is: dd.MM_hh:mm (d - day, M - month, h - hour, m - minute)_
 
 _duration format is: {\_}h{\_}m (for example 12h30m, or 1h1m, but not 1d12h)_
 
-> Calling command `command` causes program sleeping, you should stop program with `Ctrl + C`, but `todos` is set.
-
+[//]: # (> Calling command `command` causes program sleeping, you should stop program with `Ctrl + C`, but `todos` is set.)
+> Crashing with command `command` solved
 ### Coming soon
 - Saving data on virtual server.
 - Clear method (deletes all todos with "done" state)
 - Sort method (sorts listed todos using some field)
 - Customisation (such as colors, log prefixes, and other)
+- Add command `todos` to path (done with doskey command)
 
 ### Examples
 ![example](./todo-ex.png)
