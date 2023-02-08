@@ -130,3 +130,12 @@ func (r *TodoArray) Delete(id []int) (found []bool, ids []int) {
 
 	return found, ids
 }
+func (r *TodoArray) Clear() {
+	var toDel []int
+	for _, el := range r.Data {
+		if el.State == "done" {
+			toDel = append(toDel, el.ID)
+		}
+	}
+	r.Delete(toDel)
+}

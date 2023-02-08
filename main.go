@@ -127,6 +127,15 @@ func doRequest(query []string) {
 		Todos.List(validateDate)
 	case "list":
 		Todos.List(validateDate)
+	case "clear":
+		Todos.Clear()
+
+		data, err := json.MarshalIndent(Todos.Data, "", "\t")
+		logs.LogError(err)
+		err = dataFile.Rewrite(string(data))
+		logs.LogError(err)
+
+		logs.LogSuccess("Todos with `done` state deleted\n")
 	case "add":
 		if len(query) < 4 {
 			logs.NotEnoughArgs()
@@ -198,7 +207,7 @@ func doRequest(query []string) {
 				fmt.Print(prefixes.Pref.Selector("id="+strconv.Itoa(ids[i])), "\n")
 			}
 		}
-	case "Edit":
+	case "edit":
 		if len(query) < 4 {
 			logs.NotEnoughArgs()
 			break
@@ -238,6 +247,12 @@ func doRequest(query []string) {
 					logs.LogError(err)
 					err = dataFile.Rewrite(string(tempData))
 					logs.LogError(err)
+
+					data, err := json.MarshalIndent(Todos.Data, "", "\t")
+					logs.LogError(err)
+					err = dataFile.Rewrite(string(data))
+					logs.LogError(err)
+
 					logs.LogSuccess("Successfully edited Todo with ")
 					fmt.Print(prefixes.Pref.Selector("{ID}="+query[1]), " ", prefixes.Pref.Diff(oldValue, query[3]), "\n")
 					break
@@ -283,6 +298,7 @@ func init() {
 		{"add", "{Title} {Text} {Deadline} (t)", "adds new Todo, in case you enter duration {_}h{_}m type `t` in the end"},
 		{"delete", "{ID_1 ID_2 ID_3...}", "deletes Todo"},
 		{"Edit", "{ID} {Field} {Value}", "edits Todo"},
+		{"Clear", "", "deletes all todos with `done` State"},
 	})
 	helpData.SetColumnConfigs([]table.ColumnConfig{
 		{Number: 1, Align: text.AlignRight},
