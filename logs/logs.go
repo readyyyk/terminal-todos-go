@@ -14,7 +14,7 @@ func LogSuccess(data ...string) {
 	fmt.Print(prefixes.Pref.Def + text.FgGreen.Sprint(strings.Join(data, " ")))
 }
 func Deb(data ...string) {
-	fmt.Println(text.BgYellow.Sprint(text.FgBlack.Sprint(strings.Join(data, " "))))
+	fmt.Println(text.BgYellow.Sprint(strings.Join(data, "")))
 }
 func LogError(err error) {
 	if err != nil {

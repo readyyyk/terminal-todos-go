@@ -30,28 +30,12 @@ func getInput() []string {
 }
 
 func executeDoskey() {
-	localPath := path
-
-	doskeyFile := files.File{
-		Path:         localPath + "/macros.doskey",
-		DefaultValue: "",
-	}
-
-	err := os.Mkdir(localPath, 0644)
-
-	cmd := exec.Command("doskey", "todos="+path+"/todos.exe")
-	err = cmd.Run()
-	//logs.LogError(err)
-
-	err = doskeyFile.Rewrite("todos=" + path + "/todos.exe")
+	//reg add "HKCU\Enviroment" /v todos /d "d:/.prog/_go/todos/todos.exe" /f
+	cmd := exec.Command("setx", "todos", `"`+path+`/todos.exe"`, "/f")
+	err := cmd.Run()
 	logs.LogError(err)
 
-	//reg delete "HKEY_CURRENT_USER\Software\Microsoft\Command Processor" /v Autorun
-	cmd = exec.Command("reg", "delete", `"HKCU\Software\Microsoft\Command Processor"`, "/v", "Autorun", "/f")
-	err = cmd.Run()
-	logs.LogError(err)
-
-	cmd = exec.Command("reg", "add", `"HKCU\Software\Microsoft\Command Processor"`, "/v", "Autorun", "/d", `"doskey /macrofile=`+doskeyFile.Path+`"`)
+	cmd = exec.Command("reg", "add", `HKCU\Enviroment`, "/v", "todos", "/d", `"`+path+`/todos.exe"`)
 	err = cmd.Run()
 	logs.LogError(err)
 	return
@@ -135,6 +119,16 @@ func doRequest(query []string) {
 		err = dataFile.Rewrite(string(data))
 		logs.LogError(err)
 
+		logs.LogSuccess("Todos with `done` state deleted\n")
+	case "sort":
+		err := Todos.Sort(query[1], DateTimeFormat)
+
+		data, err := json.MarshalIndent(Todos.Data, "", "\t")
+		logs.LogError(err)
+		err = dataFile.Rewrite(string(data))
+		logs.LogError(err)
+
+		logs.LogError(err)
 		logs.LogSuccess("Todos with `done` state deleted\n")
 	case "add":
 		if len(query) < 4 {
@@ -243,10 +237,6 @@ func doRequest(query []string) {
 						break
 					}
 					Todos.Data[i] = newTodo
-					tempData, err := json.MarshalIndent(Todos.Data, "", "\t")
-					logs.LogError(err)
-					err = dataFile.Rewrite(string(tempData))
-					logs.LogError(err)
 
 					data, err := json.MarshalIndent(Todos.Data, "", "\t")
 					logs.LogError(err)

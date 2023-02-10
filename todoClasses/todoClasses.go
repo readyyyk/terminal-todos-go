@@ -7,6 +7,7 @@ import (
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/jedib0t/go-pretty/v6/text"
 	"reflect"
+	"sort"
 	"time"
 	"todos/files"
 
@@ -138,4 +139,25 @@ func (r *TodoArray) Clear() {
 		}
 	}
 	r.Delete(toDel)
+}
+func (r *TodoArray) Sort(field string, dateTimeFormat string) error {
+	sort.Slice(r.Data, func(i, j int) bool {
+		temp1 := reflect.ValueOf(&r.Data[i]).Elem().FieldByName(field)
+		temp2 := reflect.ValueOf(&r.Data[j]).Elem().FieldByName(field)
+
+		if temp1.CanInt() {
+			return temp1.Int() < temp2.Int()
+		} else {
+			td1, err := time.Parse(dateTimeFormat, temp1.String())
+			td2, err := time.Parse(dateTimeFormat, temp2.String())
+			if err != nil {
+				return temp1.String() < temp2.String()
+			}
+			return td1.Before(td2)
+		}
+
+		//logs.Deb(temp1, "\n", temp2, "\n")
+
+	})
+	return nil
 }
