@@ -21,22 +21,17 @@ type Todo struct {
 	State     string
 	Startdate string
 	Deadline  string
-	// delete() bool // Todo
 	// Edit(field string, value string)
 	// getFields() []string
 }
 
 func (r Todo) Edit(field string, value string) (newTodo Todo, oldValue string, customError string) {
-
 	temp := reflect.ValueOf(&r).Elem().FieldByName(field)
 	if !temp.CanSet() {
 		return r, "", "filed can't be assigned"
 	}
 	oldValue = temp.String()
 	temp.SetString(value)
-	//deb(temp.String())
-	//Data, _ := json.MarshalIndent(r, "", " ")
-	//deb(string(Data))
 
 	return r, oldValue, ""
 }
@@ -46,9 +41,9 @@ type TodoArray struct {
 	DataFile files.File
 	Origin   string
 	// Get()
-	// add(newTodo)
-	// list()
-	// drop()
+	// Add(newTodo)
+	// List()
+	// Drop() todo
 }
 
 func (r *TodoArray) Get(type_ string) {

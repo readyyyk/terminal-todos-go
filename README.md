@@ -8,6 +8,7 @@ Now to start using app u should start ***main.exe*** from app directory and type
 |------------|-------------------------------|--------------------------------------------------------------------------|
 | exit       |                               |                                                                          |
 | help       |                               | prints help                                                              |
+| cls        |                               | clears console                                                           |
 | command    |                               | program can be executed from any directory using `todos`                 |
 | colors     | 1 / 0 / enable / disable      | using to enable or disable color usage in program                        |
 | ls // list |                               | list all stored todos                                                    |
@@ -21,7 +22,9 @@ _datetime format is: dd.MM_hh:mm (d - day, M - month, h - hour, m - minute)_
 
 _duration format is: {\_}h{\_}m (for example 12h30m, or 1h1m, but not 1d12h)_
 
-> Calling command `command` causes program sleeping, you should stop program with `Ctrl + C`, but `todos` is set.
+> Command `command` complete for Linux
+
+> Calling command `command` on windows causes program sleeping, you should stop program with `Ctrl + C`, but `todos` is set.
 
 [//]: # (> Crashing with command `command` solved)
 ### Coming soon

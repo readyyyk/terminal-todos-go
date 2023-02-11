@@ -2,11 +2,14 @@ package main
 
 import (
 	"bufio"
+	"bytes"
 	"encoding/json"
 	"fmt"
+	"math"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strconv"
 	"strings"
 	"time"
@@ -28,16 +31,41 @@ func getInput() []string {
 
 	return strings.Split(reader.Text(), " ")
 }
+func approve() bool {
+	logs.LogWarning("Are you sure? (`y` to continue), type help for more information\n")
+	return strings.ToLower(getInput()[0]) == "y" || strings.ToLower(getInput()[0]) == "yes"
+}
 
 func executeDoskey() {
+	if runtime.GOOS == "linux" || runtime.GOOS == "darwin" {
+		cmd := exec.Command("bash", "-c", "cp "+path+"/todos ~/todos")
+		var stderrText bytes.Buffer
+		cmd.Stderr = &stderrText
+		err := cmd.Run()
+		if err != nil && strings.Contains(stderrText.String(), "same") {
+			return
+		}
+		logs.LogError(err)
+		cmd = exec.Command("bash", "-c", "cp "+dataFile.Path+" ~/Data.json")
+		err = cmd.Run()
+		logs.LogError(err)
+		cmd = exec.Command("bash", "-c", "cp "+settingsFile.Path+" ~/settings.json")
+		err = cmd.Run()
+		logs.LogError(err)
+
+		logs.LogSuccess("Type `~/todos` to access the app\n\tEnjoy)\n")
+		os.Exit(0)
+		return
+	}
 	//reg add "HKCU\Enviroment" /v todos /d "d:/.prog/_go/todos/todos.exe" /f
 	cmd := exec.Command("setx", "todos", `"`+path+`/todos.exe"`, "/f")
 	err := cmd.Run()
 	logs.LogError(err)
-
 	cmd = exec.Command("reg", "add", `HKCU\Enviroment`, "/v", "todos", "/d", `"`+path+`/todos.exe"`)
 	err = cmd.Run()
 	logs.LogError(err)
+
+	logs.LogSuccess("Type `%todos%` to access the app")
 	return
 }
 
@@ -88,7 +116,6 @@ func doRequest(query []string) {
 		logs.LogSuccess(path, "\n")
 	case "command":
 		executeDoskey()
-		logs.LogSuccess("Command `todos` set")
 	case "colors":
 		if len(query) < 2 {
 			logs.NotEnoughArgs()
@@ -107,11 +134,25 @@ func doRequest(query []string) {
 		} else {
 			logs.LogWarning("Wrong query args")
 		}
+	case "cls":
+		if runtime.GOOS == "linux" || runtime.GOOS == "darwin" {
+			cmd := exec.Command("clear")
+			cmd.Stdout = os.Stdout
+			logs.LogError(cmd.Run())
+		} else if runtime.GOOS == "windows" {
+			cmd := exec.Command("cls")
+			err := cmd.Run()
+			logs.LogError(err)
+		}
 	case "ls":
 		Todos.List(validateDate)
 	case "list":
 		Todos.List(validateDate)
 	case "clear":
+		if !approve() {
+			logs.LogSuccess("Canceled\n")
+			break
+		}
 		Todos.Clear()
 
 		data, err := json.MarshalIndent(Todos.Data, "", "\t")
@@ -128,8 +169,7 @@ func doRequest(query []string) {
 		err = dataFile.Rewrite(string(data))
 		logs.LogError(err)
 
-		logs.LogError(err)
-		logs.LogSuccess("Todos with `done` state deleted\n")
+		logs.LogSuccess("Todos sorted with", prefixes.Pref.Selector(query[1]), "\n")
 	case "add":
 		if len(query) < 4 {
 			logs.NotEnoughArgs()
@@ -137,7 +177,10 @@ func doRequest(query []string) {
 		}
 		tempId := 0
 		if len(Todos.Data) != 0 {
-			tempId = Todos.Data[len(Todos.Data)-1].ID + 1
+			tempId = Todos.Data[0].ID + 1
+			for _, el := range Todos.Data {
+				tempId = int(math.Max(float64(el.ID)+1, float64(tempId)))
+			}
 		}
 
 		newTodo := todos.Todo{
@@ -154,6 +197,11 @@ func doRequest(query []string) {
 			newTodo.Deadline = time.Now().Add(dur).Format(DateTimeFormat)
 			Todos.Add(newTodo)
 			logs.LogSuccess("Successfully added Todo\n")
+
+			data, err := json.MarshalIndent(Todos.Data, "", "\t")
+			logs.LogError(err)
+			err = dataFile.Rewrite(string(data))
+			logs.LogError(err)
 			break
 		}
 		if isBefore, _, customError := validateDate(query[3]); len(customError) > 0 {
@@ -165,10 +213,12 @@ func doRequest(query []string) {
 		}
 		newTodo.Deadline = query[3]
 		Todos.Add(newTodo)
+
 		data, err := json.MarshalIndent(Todos.Data, "", "\t")
 		logs.LogError(err)
 		err = dataFile.Rewrite(string(data))
 		logs.LogError(err)
+
 		logs.LogSuccess("Successfully added Todo\n")
 	case "delete":
 		if len(query) < 2 {
@@ -282,13 +332,14 @@ func init() {
 	helpData.AppendRows([]table.Row{
 		{"exit", "", ""},
 		{"help", "", "prints help"},
-		{"command", "", "program can be executed from any directory using `Todos`"},
+		{"command", "", "program can be executed from any directory using `todos`"},
 		{"colors", "1|0|enable|disable", "using to enable or disable color usage in program"},
 		{"ls|list", "", "list all stored Todos"},
+		{"clear", "", "deletes all todos with `done` State"},
+		{"sort", "{Field}", "sorts todos array with the Field"},
 		{"add", "{Title} {Text} {Deadline} (t)", "adds new Todo, in case you enter duration {_}h{_}m type `t` in the end"},
 		{"delete", "{ID_1 ID_2 ID_3...}", "deletes Todo"},
-		{"Edit", "{ID} {Field} {Value}", "edits Todo"},
-		{"Clear", "", "deletes all todos with `done` State"},
+		{"edit", "{ID} {Field} {Value}", "edits Todo"},
 	})
 	helpData.SetColumnConfigs([]table.ColumnConfig{
 		{Number: 1, Align: text.AlignRight},

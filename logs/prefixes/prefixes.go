@@ -16,6 +16,12 @@ type Prefixes struct {
 	// Colors(enable bool)
 }
 
+const (
+	PrefErrorString   = " -x-> "
+	PrefSuccessString = " ---> "
+	PrefInputString   = " -> "
+)
+
 var Pref = Prefixes{
 	Err: text.FgYellow.Sprint(" -x-> "),
 	Def: text.FgGreen.Sprint(" ---> "),
@@ -28,8 +34,14 @@ var Pref = Prefixes{
 func (r *Prefixes) Colors(enable bool) {
 	if enable {
 		text.EnableColors()
+		Pref.Err = text.FgYellow.Sprint(PrefErrorString)
+		Pref.Def = text.FgGreen.Sprint(PrefSuccessString)
+		Pref.Inp = text.FgMagenta.Sprint(PrefInputString)
 	} else {
 		text.DisableColors()
+		Pref.Err = PrefErrorString
+		Pref.Def = PrefSuccessString
+		Pref.Inp = PrefInputString
 	}
 }
 func (r *Prefixes) Diff(oldValue, newValue string) string {
