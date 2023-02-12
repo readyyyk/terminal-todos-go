@@ -10,7 +10,7 @@ type File struct {
 	Path         string
 	DefaultValue string
 	// create()
-	// read()
+	// read([]byte, error)
 	// rewrite(value string)
 }
 
@@ -20,7 +20,7 @@ func (r *File) Create() (created bool, err error) {
 		if err != nil {
 			return false, err
 		}
-		file_, err = os.Open(r.Path)
+		file_, err = os.OpenFile(r.Path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 		if err != nil {
 			return false, err
 		}
@@ -32,6 +32,7 @@ func (r *File) Create() (created bool, err error) {
 		if err != nil {
 			return false, err
 		}
+		defer file_.Close()
 		return true, nil
 	}
 	return false, nil
@@ -56,6 +57,7 @@ func (r *File) Read() (data []byte, err error) {
 	if err != nil {
 		return []byte{}, err
 	}
+	defer file_.Close()
 	return data, nil
 }
 func (r *File) Rewrite(value string) (err error) {
@@ -76,5 +78,6 @@ func (r *File) Rewrite(value string) (err error) {
 	if err != nil {
 		return err
 	}
+	defer file_.Close()
 	return nil
 }

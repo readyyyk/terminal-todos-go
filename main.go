@@ -9,31 +9,58 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"runtime"
 	"strconv"
 	"strings"
 	"time"
 
-	"todos/files"
-	"todos/logs"
-	"todos/logs/prefixes"
-	"todos/todoClasses"
+	"todos/pkg/files"
+	"todos/pkg/logs"
+	"todos/pkg/logs/prefixes"
+	todos "todos/pkg/todoClasses"
 
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/jedib0t/go-pretty/v6/text"
 	"golang.org/x/exp/slices"
 )
 
-func getInput() []string {
+func GetInput() []string {
 	reader := bufio.NewScanner(os.Stdin)
 	reader.Scan()
 	logs.LogError(reader.Err())
 
-	return strings.Split(reader.Text(), " ")
+	data := strings.Split(reader.Text(), " ")
+	connect := false
+	for i := 0; i < len(data); i++ {
+		el := data[i]
+
+		if re, _ := regexp.Compile("\".+\""); re.MatchString(el) {
+			data[i] = strings.ReplaceAll(el, `"`, "")
+			continue
+		}
+
+		if connect {
+			data[i-1] = data[i-1] + " " + data[i]
+			data[i-1] = strings.ReplaceAll(data[i-1], `"`, "")
+			data = append(data[:i], data[i+1:]...)
+			i--
+		}
+		if strings.Index(el, `"`) == 0 {
+			connect = true
+		} else if strings.Index(el, `"`) == len(el)-1 {
+			connect = false
+		}
+	}
+
+	//logs.Deb(strings.Join(data, "\n"))
+
+	return data
 }
 func approve() bool {
 	logs.LogWarning("Are you sure? (`y` to continue), type help for more information\n")
-	return strings.ToLower(getInput()[0]) == "y" || strings.ToLower(getInput()[0]) == "yes"
+	inputData := strings.ToLower(GetInput()[0])
+	return inputData == "y" || inputData == "yes"
 }
 
 func executeDoskey() {
@@ -52,6 +79,16 @@ func executeDoskey() {
 		cmd = exec.Command("bash", "-c", "cp "+settingsFile.Path+" ~/settings.json")
 		err = cmd.Run()
 		logs.LogError(err)
+
+		//bashrcFile := files.File{
+		//	Path:         path + "/todos.sh",
+		//	DefaultValue: `export PATH=$PATH:` + path,
+		//}
+		//_, err := bashrcFile.Create()
+		//logs.LogError(err)
+		//cmd := exec.Command("bash", "-c", "mv "+path+"/todos.sh /etc/profile.d/todos.sh")
+		//cmd.Stderr = os.Stderr
+		//logs.LogError(cmd.Run())
 
 		logs.LogSuccess("Type `~/todos` to access the app\n\tEnjoy)\n")
 		os.Exit(0)
@@ -185,8 +222,8 @@ func doRequest(query []string) {
 
 		newTodo := todos.Todo{
 			ID:        tempId,
-			Title:     strings.ReplaceAll(query[1], "_", " "),
-			Text:      strings.ReplaceAll(query[2], "_", " "),
+			Title:     query[1],
+			Text:      query[2],
 			State:     "passive",
 			Startdate: time.Now().Format(DateTimeFormat),
 		}
@@ -258,7 +295,7 @@ func doRequest(query []string) {
 		}
 
 		if query[2] == "State" {
-			query[3] = strings.ReplaceAll(query[3], "_", " ")
+			query[3] = query[3]
 		}
 
 		if tempId, err := strconv.Atoi(query[1]); err != nil {
@@ -355,12 +392,13 @@ func init() {
 	doRequest([]string{"colors", settingsData.Colors})
 
 	Todos.Get("json")
-	logs.LogSuccess("Successfully read Data file\n")
+	logs.LogSuccess("Successfully read Data file\n\n")
+	logs.LogSuccess("Type `help` for help\n")
 }
 func main() {
 	for {
 		fmt.Print("\n" + prefixes.Pref.Inp)
-		query := getInput()
+		query := GetInput()
 
 		doRequest(query)
 	}

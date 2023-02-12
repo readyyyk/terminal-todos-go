@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"github.com/jedib0t/go-pretty/v6/text"
 	"strings"
-	"todos/logs/prefixes"
+	"todos/pkg/logs/prefixes"
 )
 
 func LogWarning(data ...string) {

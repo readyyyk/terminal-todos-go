@@ -2,7 +2,7 @@
 
 ## Temporary project that will be divided into API and Terminal app
 
-Now to start using app u should start ***main.exe*** from app directory and type `command` to set command `todos` that can be executed anywhere from console that will start the app.
+Now to start using app u should start ***todos.exe || todos*** from app directory and type `command` to set command `todos` that can be executed anywhere from console that will start the app.
 
 | command    | arguments                     | description                                                              |
 |------------|-------------------------------|--------------------------------------------------------------------------|
@@ -22,6 +22,8 @@ _datetime format is: dd.MM_hh:mm (d - day, M - month, h - hour, m - minute)_
 
 _duration format is: {\_}h{\_}m (for example 12h30m, or 1h1m, but not 1d12h)_
 
+_for lines with spaces use "" for exmaple "buy bread, milk, smth else"_
+
 > Command `command` complete for Linux
 
 > Calling command `command` on windows causes program sleeping, you should stop program with `Ctrl + C`, but `todos` is set.
@@ -33,4 +35,4 @@ _duration format is: {\_}h{\_}m (for example 12h30m, or 1h1m, but not 1d12h)_
 - Add command `todos` to path (done with doskey command)
 
 ### Examples
-![example](./todo-ex.png)
+![example](./assets/todo-ex.png)

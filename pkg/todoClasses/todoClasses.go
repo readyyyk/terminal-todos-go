@@ -9,9 +9,8 @@ import (
 	"reflect"
 	"sort"
 	"time"
-	"todos/files"
-
-	"todos/logs"
+	"todos/pkg/files"
+	"todos/pkg/logs"
 )
 
 type Todo struct {
