@@ -65,48 +65,25 @@ func approve() bool {
 
 func executeDoskey() {
 	if runtime.GOOS == "linux" || runtime.GOOS == "darwin" {
-		cmd := exec.Command("bash", "-c", "cp "+path+"/todos ~/todos")
-		var stderrText bytes.Buffer
-		cmd.Stderr = &stderrText
-		err := cmd.Run()
-		if err != nil && strings.Contains(stderrText.String(), "same") {
-			return
-		}
-		logs.LogError(err)
-		cmd = exec.Command("bash", "-c", "cp "+dataFile.Path+" ~/Data.json")
-		err = cmd.Run()
-		logs.LogError(err)
-		cmd = exec.Command("bash", "-c", "cp "+settingsFile.Path+" ~/settings.json")
-		err = cmd.Run()
+		err := exec.Command("bash", "-c", "echo \"\" >> ~/.bashrc; echo 'export PATH=\"$PATH:"+path+"\"' >> ~/.bashrc").Run()
 		logs.LogError(err)
 
-		//bashrcFile := files.File{
-		//	Path:         path + "/todos.sh",
-		//	DefaultValue: `export PATH=$PATH:` + path,
-		//}
-		//_, err := bashrcFile.Create()
-		//logs.LogError(err)
-		//cmd := exec.Command("bash", "-c", "mv "+path+"/todos.sh /etc/profile.d/todos.sh")
-		//cmd.Stderr = os.Stderr
-		//logs.LogError(cmd.Run())
-
-		logs.LogSuccess("Type `~/todos` to access the app\n\tEnjoy)\n")
+		logs.LogSuccess("Relaunch console to update Path variables\n\tThen you are able to run app with `todos`\n\tEnjoy)\n")
 		os.Exit(0)
 		return
 	}
-	//reg add "HKCU\Enviroment" /v todos /d "d:/.prog/_go/todos/todos.exe" /f
 	cmd := exec.Command("setx", "path", os.Getenv("path")+";"+path)
 	var stderrText bytes.Buffer
 	cmd.Stderr = &stderrText
 	err := cmd.Run()
 	if err != nil && strings.Contains(stderrText.String(), "denied") {
 		logs.LogWarning("App has no access to path variable, so, run next command and relaunch console for using command `todos.exe`\n(!!! Run with admin rights !!!)\n")
-		fmt.Println(`setx path "%path%;`+path+`"`)
+		fmt.Println(`setx path "%path%;` + path + `"`)
 		return
 	}
 	logs.LogError(err)
 
-	logs.LogSuccess("Relaunch console to update Path variables\n\tThen you are able to run app with `todos.exe`\n\tEnjoy)\n")
+	logs.LogSuccess("Relaunch console to update Path variables\n\tThen you are able to run app with `todos`\n\tEnjoy)\n")
 	os.Exit(0)
 }
 
@@ -178,16 +155,16 @@ func doRequest(query []string) {
 	case "cls":
 		fmt.Print("\033[H\033[2J")
 		/*
-		if runtime.GOOS == "linux" || runtime.GOOS == "darwin" {
-			cmd := exec.Command("clear")
-			cmd.Stdout = os.Stdout
-			logs.LogError(cmd.Run())
-		} else if runtime.GOOS == "windows" {
-			cmd := exec.Command("cmd", "/c", "cls")
-			cmd.Run()
-			cmd.Stdout = os.Stdout
-			// logs.LogError(err)
-		}
+			if runtime.GOOS == "linux" || runtime.GOOS == "darwin" {
+				cmd := exec.Command("clear")
+				cmd.Stdout = os.Stdout
+				logs.LogError(cmd.Run())
+			} else if runtime.GOOS == "windows" {
+				cmd := exec.Command("cmd", "/c", "cls")
+				cmd.Run()
+				cmd.Stdout = os.Stdout
+				// logs.LogError(err)
+			}
 		*/
 	case "ls":
 		Todos.List(validateDate)
@@ -356,7 +333,7 @@ func init() {
 	ex, err := os.Executable()
 	logs.LogError(err)
 	TodoStates = []string{"passive", "in progress", "important", "done"}
-	path = filepath.Dir(ex) //strings.ReplaceAll(filepath.Dir(ex), `\`, `/`)
+	path = filepath.Dir(ex)
 
 	dataFile = files.File{
 		Path:         path + "/Data.json",

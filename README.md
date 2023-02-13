@@ -2,7 +2,7 @@
 
 ## Temporary project that will be divided into API and Terminal app
 
-Now to start using app u should start ***todos.exe || todos*** from app directory and type `command` to set command `todos` that can be executed anywhere from console that will start the app.
+Now to start using app u should start ***bin/todos.exe || bin/todos*** from app directory and type `command` to set command `todos` that can be executed anywhere from console that will start the app.
 
 | command    | arguments                     | description                                                              |
 |------------|-------------------------------|--------------------------------------------------------------------------|
@@ -24,13 +24,8 @@ _duration format is: {\_}h{\_}m (for example 12h30m, or 1h1m, but not 1d12h)_
 
 _for lines with spaces use "" for exmaple "buy bread, milk, smth else"_
 
-> Command `command` moves files to `~/` for Linux
+> Command `command` adds PATH
 
-> Command `command` adds PATH for Windows
-
-[//]: # (> Calling command `command` on windows causes program sleeping, you should stop program with `Ctrl + C`, but `todos` is set.)
-
-[//]: # (> Crashing with command `command` solved)
 ### Coming soon
 - Saving data on virtual server.
 - Customisation (such as colors, log prefixes, and other)
