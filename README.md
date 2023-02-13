@@ -24,15 +24,16 @@ _duration format is: {\_}h{\_}m (for example 12h30m, or 1h1m, but not 1d12h)_
 
 _for lines with spaces use "" for exmaple "buy bread, milk, smth else"_
 
-> Command `command` complete for Linux
+> Command `command` moves files to `~/` for Linux
 
-> Calling command `command` on windows causes program sleeping, you should stop program with `Ctrl + C`, but `todos` is set.
+> Command `command` adds PATH for Windows
+
+[//]: # (> Calling command `command` on windows causes program sleeping, you should stop program with `Ctrl + C`, but `todos` is set.)
 
 [//]: # (> Crashing with command `command` solved)
 ### Coming soon
 - Saving data on virtual server.
 - Customisation (such as colors, log prefixes, and other)
-- Add command `todos` to path (done with doskey command)
 
 ### Examples
 ![example](./assets/todo-ex.png)

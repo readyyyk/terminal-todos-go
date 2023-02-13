@@ -95,15 +95,19 @@ func executeDoskey() {
 		return
 	}
 	//reg add "HKCU\Enviroment" /v todos /d "d:/.prog/_go/todos/todos.exe" /f
-	cmd := exec.Command("setx", "todos", `"`+path+`/todos.exe"`, "/f")
+	cmd := exec.Command("setx", "path", os.Getenv("path")+";"+path)
+	var stderrText bytes.Buffer
+	cmd.Stderr = &stderrText
 	err := cmd.Run()
-	logs.LogError(err)
-	cmd = exec.Command("reg", "add", `HKCU\Enviroment`, "/v", "todos", "/d", `"`+path+`/todos.exe"`)
-	err = cmd.Run()
+	if err != nil && strings.Contains(stderrText.String(), "denied") {
+		logs.LogWarning("App has no access to path variable, so, run next command and relaunch console for using command `todos.exe`\n(!!! Run with admin rights !!!)\n")
+		fmt.Println(`setx path "%path%;`+path+`"`)
+		return
+	}
 	logs.LogError(err)
 
-	logs.LogSuccess("Type `%todos%` to access the app")
-	return
+	logs.LogSuccess("Relaunch console to update Path variables\n\tThen you are able to run app with `todos.exe`\n\tEnjoy)\n")
+	os.Exit(0)
 }
 
 var dataFile files.File
@@ -172,15 +176,19 @@ func doRequest(query []string) {
 			logs.LogWarning("Wrong query args")
 		}
 	case "cls":
+		fmt.Print("\033[H\033[2J")
+		/*
 		if runtime.GOOS == "linux" || runtime.GOOS == "darwin" {
 			cmd := exec.Command("clear")
 			cmd.Stdout = os.Stdout
 			logs.LogError(cmd.Run())
 		} else if runtime.GOOS == "windows" {
-			cmd := exec.Command("cls")
-			err := cmd.Run()
-			logs.LogError(err)
+			cmd := exec.Command("cmd", "/c", "cls")
+			cmd.Run()
+			cmd.Stdout = os.Stdout
+			// logs.LogError(err)
 		}
+		*/
 	case "ls":
 		Todos.List(validateDate)
 	case "list":
@@ -348,7 +356,7 @@ func init() {
 	ex, err := os.Executable()
 	logs.LogError(err)
 	TodoStates = []string{"passive", "in progress", "important", "done"}
-	path = strings.ReplaceAll(filepath.Dir(ex), `\`, `/`)
+	path = filepath.Dir(ex) //strings.ReplaceAll(filepath.Dir(ex), `\`, `/`)
 
 	dataFile = files.File{
 		Path:         path + "/Data.json",
