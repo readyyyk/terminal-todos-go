@@ -107,6 +107,9 @@ func validateDate(value string) (isBefore bool, diff time.Duration, customError 
 	}
 	date = date.AddDate(time.Now().Year(), 0, 0)
 	date = date.Add(-time.Duration(utcDiff) * time.Hour)
+	if time.Now().Day() != time.Now().UTC().Day() {
+		date = date.Add(-time.Hour*time.Duration(24))
+	}
 
 	isBefore = date.Before(time.Now())
 	diff = date.Sub(time.Now())
