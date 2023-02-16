@@ -120,77 +120,76 @@ func validateDate(value string) (isBefore bool, diff time.Duration, customError 
 var path = ""
 
 type settings struct {
-	Colors    string
+	Colors    bool
 	AutoSort  bool
 	SortValue string
+	AutoClear bool
 }
 
 var settingsData settings
 
+func cls() {
+	fmt.Print("\033[H\033[2J")
+	/*if runtime.GOOS == "linux" || runtime.GOOS == "darwin" {
+		cmd := exec.Command("clear")
+		cmd.Stdout = os.Stdout
+		logs.LogError(cmd.Run())
+	} else if runtime.GOOS == "windows" {
+		cmd := exec.Command("cmd", "/c", "cls")
+		cmd.Run()
+		cmd.Stdout = os.Stdout
+		// logs.LogError(err)
+	}*/
+}
 func doRequest(query []string) {
+	if settingsData.AutoClear {
+		cls()
+	}
+
 	switch query[0] {
 	case "help":
-		doRequest([]string{"cls"})
 		fmt.Println("\n" + helpData.Render() + "\n")
 		fmt.Println("datetime format is: dd.MM_hh:mm (d - day, M - month, h - hour, m - minute)")
 		fmt.Println("duration format is: {_}h{_}m (for example 12h30m, or 1h1m, but not 1d12h)")
 	case "exit":
 		os.Exit(0)
 	case "path":
-		doRequest([]string{"cls"})
 		logs.LogSuccess(path, "\n")
 	case "command":
-		doRequest([]string{"cls"})
 		executeDoskey()
 	case "autosort":
-		doRequest([]string{"cls"})
 		settingsData.AutoSort = !settingsData.AutoSort
 		data, err := json.MarshalIndent(settingsData, "", "\t")
 		logs.LogError(err)
-		err = dataFile.Rewrite(string(data))
+		err = settingsFile.Rewrite(string(data))
 		logs.LogError(err)
 		logs.LogSuccess("Autosort successfully set\n")
+	case "autoclear":
+		settingsData.AutoClear = !settingsData.AutoClear
+		data, err := json.MarshalIndent(settingsData, "", "\t")
+		logs.LogError(err)
+		err = settingsFile.Rewrite(string(data))
+		logs.LogError(err)
+		logs.LogSuccess("Autoclear successfully set\n")
 	case "colors":
-		doRequest([]string{"cls"})
-		if len(query) < 2 {
-			logs.NotEnoughArgs()
-			break
-		}
-		if query[1] == "1" || query[1] == "enable" {
-			prefixes.Pref.Colors(true)
+		settingsData.Colors = !settingsData.Colors
+		data, err := json.MarshalIndent(settingsData, "", "\t")
+		logs.LogError(err)
+		err = settingsFile.Rewrite(string(data))
+		logs.LogError(err)
+
+		prefixes.Pref.Colors(settingsData.Colors)
+		if settingsData.Colors {
 			logs.LogSuccess("Colors enabled\n")
-			err := settingsFile.Rewrite(`{"colors":"1"}`)
-			logs.LogError(err)
-		} else if query[1] == "0" || query[1] == "disable" {
-			prefixes.Pref.Colors(false)
-			logs.LogSuccess("Colors disabled\n")
-			err := settingsFile.Rewrite(`{"colors":"0"}`)
-			logs.LogError(err)
 		} else {
-			logs.LogWarning("Wrong query args")
+			logs.LogSuccess("Colors disabled\n")
 		}
-	case "cls":
-		fmt.Print("\033[H\033[2J")
-		/*
-			if runtime.GOOS == "linux" || runtime.GOOS == "darwin" {
-				cmd := exec.Command("clear")
-				cmd.Stdout = os.Stdout
-				logs.LogError(cmd.Run())
-			} else if runtime.GOOS == "windows" {
-				cmd := exec.Command("cmd", "/c", "cls")
-				cmd.Run()
-				cmd.Stdout = os.Stdout
-				// logs.LogError(err)
-			}
-		*/
+	//case "cls":
 	case "ls":
-		doRequest([]string{"cls"})
 		Todos.List(validateDate)
 	case "list":
-		doRequest([]string{"cls"})
 		Todos.List(validateDate)
 	case "clear":
-		doRequest([]string{"cls"})
 		if !approve() {
 			logs.LogSuccess("Canceled\n")
 			break
@@ -204,7 +203,6 @@ func doRequest(query []string) {
 
 		logs.LogSuccess("Todos with `done` state deleted\n")
 	case "sort":
-		doRequest([]string{"cls"})
 		err := Todos.Sort(query[1], DateTimeFormat)
 
 		data, err := json.MarshalIndent(Todos.Data, "", "\t")
@@ -220,7 +218,6 @@ func doRequest(query []string) {
 
 		logs.LogSuccess("Todos sorted with", prefixes.Pref.Selector(query[1]), "\n")
 	case "add":
-		doRequest([]string{"cls"})
 		if len(query) < 4 {
 			logs.NotEnoughArgs()
 			break
@@ -248,11 +245,6 @@ func doRequest(query []string) {
 			Todos.Add(newTodo)
 			logs.LogSuccess("Successfully added Todo\n")
 
-			if settingsData.AutoSort {
-				err := Todos.Sort(settingsData.SortValue, DateTimeFormat)
-				logs.LogError(err)
-			}
-
 			data, err := json.MarshalIndent(Todos.Data, "", "\t")
 			logs.LogError(err)
 			err = dataFile.Rewrite(string(data))
@@ -270,11 +262,6 @@ func doRequest(query []string) {
 		newTodo.Deadline = query[3]
 		Todos.Add(newTodo)
 
-		if settingsData.AutoSort {
-			err := Todos.Sort(settingsData.SortValue, DateTimeFormat)
-			logs.LogError(err)
-		}
-
 		data, err := json.MarshalIndent(Todos.Data, "", "\t")
 		logs.LogError(err)
 		err = dataFile.Rewrite(string(data))
@@ -282,7 +269,6 @@ func doRequest(query []string) {
 
 		logs.LogSuccess("Successfully added Todo\n")
 	case "delete":
-		doRequest([]string{"cls"})
 		if len(query) < 2 {
 			logs.NotEnoughArgs()
 			break
@@ -314,7 +300,6 @@ func doRequest(query []string) {
 			}
 		}
 	case "edit":
-		doRequest([]string{"cls"})
 		if len(query) < 4 {
 			logs.NotEnoughArgs()
 			break
@@ -351,11 +336,6 @@ func doRequest(query []string) {
 					}
 					Todos.Data[i] = newTodo
 
-					if settingsData.AutoSort {
-						err := Todos.Sort(settingsData.SortValue, DateTimeFormat)
-						logs.LogError(err)
-					}
-
 					data, err := json.MarshalIndent(Todos.Data, "", "\t")
 					logs.LogError(err)
 					err = dataFile.Rewrite(string(data))
@@ -371,8 +351,12 @@ func doRequest(query []string) {
 			}
 		}
 	default:
-		doRequest([]string{"cls"})
 		logs.LogWarning("Wrong query\n")
+	}
+
+	if settingsData.AutoSort {
+		err := Todos.Sort(settingsData.SortValue, DateTimeFormat)
+		logs.LogError(err)
 	}
 }
 
@@ -388,7 +372,7 @@ func init() {
 	}
 	settingsFile = files.File{
 		Path:         path + "/settings.json",
-		DefaultValue: `{"Colors":"0", "AutoSort": false, "SortValue":"ID"}`,
+		DefaultValue: `{"Colors": false, "AutoSort": false, "SortValue":"ID", "AutoClear": false}`,
 	}
 
 	Todos = todos.TodoArray{
@@ -402,7 +386,11 @@ func init() {
 		{"exit", "", ""},
 		{"help", "", "prints help"},
 		{"command", "", "program can be executed from any directory using `todos`"},
-		{"colors", "1|0|enable|disable", "using to enable or disable color usage in program"},
+		
+		{"colors", "", "toggle enable or disable color usage"},
+		{"autosort", "", "toggle enable or disable automatic sorting with field in last `sort`"},
+		{"autoclear", "", "toggle enable or disable automatic clearing screen"},
+
 		{"ls|list", "", "list all stored Todos"},
 		{"clear", "", "deletes all todos with `done` State"},
 		{"sort", "{Field}", "sorts todos array with the Field"},
@@ -421,7 +409,8 @@ func init() {
 	tempData, err := settingsFile.Read()
 	logs.LogError(err)
 	logs.LogError(json.Unmarshal(tempData, &settingsData))
-	doRequest([]string{"colors", settingsData.Colors})
+
+	prefixes.Pref.Colors(settingsData.Colors)
 
 	Todos.Get("json")
 	logs.LogSuccess("Successfully read Data file\n\n")

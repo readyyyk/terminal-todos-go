@@ -8,9 +8,10 @@ Now to start using app u should start ***bin/todos.exe || bin/todos*** from app 
 |------------|-------------------------------|--------------------------------------------------------------------------|
 | exit       |                               |                                                                          |
 | help       |                               | prints help                                                              |
-| cls        |                               | clears console                                                           |
 | command    |                               | program can be executed from any directory using `todos`                 |
-| colors     | 1 / 0 / enable / disable      | using to enable or disable color usage in program                        |
+| colors     |                               | toggle enable or disable color usage                                     |
+| autosort   |                               | toggle enable or disable automatic sorting with field in last `sort`     |
+| autoclear  |                               | toggle enable or disable automatic clearing screen                       |
 | ls // list |                               | list all stored todos                                                    |
 | clear      |                               | deletes all todos with State `done`                                      |
 | sort       | {Field}                       | sorts todos array with the `Field`                                       |
