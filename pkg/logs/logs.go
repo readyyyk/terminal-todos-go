@@ -4,14 +4,13 @@ import (
 	"fmt"
 	"github.com/jedib0t/go-pretty/v6/text"
 	"strings"
-	"todos/pkg/logs/prefixes"
 )
 
 func LogWarning(data ...string) {
-	fmt.Print(prefixes.Pref.Err + text.FgYellow.Sprint(strings.Join(data, " ")))
+	fmt.Print(Pref.Err + text.FgYellow.Sprint(strings.Join(data, " ")))
 }
 func LogSuccess(data ...string) {
-	fmt.Print(prefixes.Pref.Def + text.FgGreen.Sprint(strings.Join(data, " ")))
+	fmt.Print(Pref.Def + text.FgGreen.Sprint(strings.Join(data, " ")))
 }
 func Deb(data ...string) {
 	fmt.Println(text.BgYellow.Sprint(strings.Join(data, "")))

@@ -17,7 +17,6 @@ import (
 
 	"todos/pkg/files"
 	"todos/pkg/logs"
-	"todos/pkg/logs/prefixes"
 	todos "todos/pkg/todoClasses"
 
 	"github.com/jedib0t/go-pretty/v6/table"
@@ -178,7 +177,7 @@ func doRequest(query []string) {
 		err = settingsFile.Rewrite(string(data))
 		logs.LogError(err)
 
-		prefixes.Pref.Colors(settingsData.Colors)
+		logs.Pref.Colors(settingsData.Colors)
 		if settingsData.Colors {
 			logs.LogSuccess("Colors enabled\n")
 		} else {
@@ -216,7 +215,7 @@ func doRequest(query []string) {
 		err = settingsFile.Rewrite(string(data))
 		logs.LogError(err)
 
-		logs.LogSuccess("Todos sorted with", prefixes.Pref.Selector(query[1]), "\n")
+		logs.LogSuccess("Todos sorted with", logs.Pref.Selector(query[1]), "\n")
 	case "add":
 		if len(query) < 4 {
 			logs.NotEnoughArgs()
@@ -296,7 +295,7 @@ func doRequest(query []string) {
 				logs.LogSuccess("Successfully deleted Todo\n")
 			} else {
 				logs.LogWarning("Can't find Todo with ")
-				fmt.Print(prefixes.Pref.Selector("id="+strconv.Itoa(ids[i])), "\n")
+				fmt.Print(logs.Pref.Selector("id="+strconv.Itoa(ids[i])), "\n")
 			}
 		}
 	case "edit":
@@ -311,7 +310,7 @@ func doRequest(query []string) {
 
 		if tempId, err := strconv.Atoi(query[1]); err != nil {
 			logs.LogWarning("Wrong input, input a valid ")
-			fmt.Print(prefixes.Pref.Selector("ID"), "\n")
+			fmt.Print(logs.Pref.Selector("ID"), "\n")
 			break
 		} else if query[2] == "ID" || query[2] == "Startdate" {
 			logs.LogWarning("Can't Edit this field\n")
@@ -331,7 +330,7 @@ func doRequest(query []string) {
 					newTodo, oldValue, customError := el.Edit(query[2], query[3])
 					if len(customError) > 0 {
 						logs.LogWarning(err)
-						fmt.Print(" "+prefixes.Pref.Selector(query[2]), "\n")
+						fmt.Print(" "+logs.Pref.Selector(query[2]), "\n")
 						break
 					}
 					Todos.Data[i] = newTodo
@@ -342,11 +341,11 @@ func doRequest(query []string) {
 					logs.LogError(err)
 
 					logs.LogSuccess("Successfully edited Todo with ")
-					fmt.Print(prefixes.Pref.Selector("{ID}="+query[1]), " ", prefixes.Pref.Diff(oldValue, query[3]), "\n")
+					fmt.Print(logs.Pref.Selector("{ID}="+query[1]), " ", logs.Pref.Diff(oldValue, query[3]), "\n")
 					break
 				} else if i == len(Todos.Data)-1 {
 					logs.LogWarning("Can't find Todo with ")
-					fmt.Print(prefixes.Pref.Selector("{id}="+query[1]), "\n")
+					fmt.Print(logs.Pref.Selector("{id}="+query[1]), "\n")
 				}
 			}
 		}
@@ -386,7 +385,7 @@ func init() {
 		{"exit", "", ""},
 		{"help", "", "prints help"},
 		{"command", "", "program can be executed from any directory using `todos`"},
-		
+
 		{"colors", "", "toggle enable or disable color usage"},
 		{"autosort", "", "toggle enable or disable automatic sorting with field in last `sort`"},
 		{"autoclear", "", "toggle enable or disable automatic clearing screen"},
@@ -410,7 +409,7 @@ func init() {
 	logs.LogError(err)
 	logs.LogError(json.Unmarshal(tempData, &settingsData))
 
-	prefixes.Pref.Colors(settingsData.Colors)
+	logs.Pref.Colors(settingsData.Colors)
 
 	Todos.Get("json")
 	logs.LogSuccess("Successfully read Data file\n\n")
@@ -418,7 +417,7 @@ func init() {
 }
 func main() {
 	for {
-		fmt.Print("\n" + prefixes.Pref.Inp)
+		fmt.Print("\n" + logs.Pref.Inp)
 		query := GetInput()
 
 		doRequest(query)
