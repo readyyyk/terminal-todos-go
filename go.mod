@@ -1,4 +1,4 @@
-module todos
+module github.com/readyyyk/terminal-todos-go
 
 go 1.19
 

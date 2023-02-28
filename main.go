@@ -15,9 +15,9 @@ import (
 	"strings"
 	"time"
 
-	"todos/pkg/files"
-	"todos/pkg/logs"
-	todos "todos/pkg/todoClasses"
+	"github.com/readyyyk/terminal-todos-go/pkg/files"
+	"github.com/readyyyk/terminal-todos-go/pkg/logs"
+	todos "github.com/readyyyk/terminal-todos-go/pkg/todoClasses"
 
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/jedib0t/go-pretty/v6/text"
