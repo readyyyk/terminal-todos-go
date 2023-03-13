@@ -1,6 +1,7 @@
 package logs
 
 import (
+	"encoding/json"
 	"fmt"
 	"github.com/jedib0t/go-pretty/v6/text"
 	"strings"
@@ -23,4 +24,9 @@ func LogError(err error) {
 }
 func NotEnoughArgs() {
 	LogWarning("Not enough arguments, type `help` for help\n")
+}
+func AsJSON(data any) {
+	dataJSON, err := json.MarshalIndent(data, "", "  ")
+	LogError(err)
+	fmt.Println(string(dataJSON))
 }
