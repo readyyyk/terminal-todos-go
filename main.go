@@ -2,15 +2,12 @@ package main
 
 import (
 	"bufio"
-	"bytes"
 	"encoding/json"
 	"fmt"
 	"math"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"regexp"
-	"runtime"
 	"strconv"
 	"strings"
 	"time"
@@ -20,7 +17,6 @@ import (
 	todos "github.com/readyyyk/terminal-todos-go/pkg/todoClasses"
 
 	"github.com/jedib0t/go-pretty/v6/table"
-	"github.com/jedib0t/go-pretty/v6/text"
 	"golang.org/x/exp/slices"
 )
 
@@ -51,39 +47,12 @@ func GetInput() []string {
 			connect = false
 		}
 	}
-
-	//logs.Deb(strings.Join(data, "\n"))
-
 	return data
 }
 func approve() bool {
 	logs.LogWarning("Are you sure? (`y` to continue), type help for more information\n")
 	inputData := strings.ToLower(GetInput()[0])
 	return inputData == "y" || inputData == "yes"
-}
-
-func executeDoskey() {
-	if runtime.GOOS == "linux" || runtime.GOOS == "darwin" {
-		err := exec.Command("bash", "-c", "echo \"\" >> ~/.bashrc; echo 'export PATH=\"$PATH:"+path+"\"' >> ~/.bashrc").Run()
-		logs.LogError(err)
-
-		logs.LogSuccess("Relaunch console to update Path variables\n\tThen you are able to run app with `todos`\n\tEnjoy)\n")
-		os.Exit(0)
-		return
-	}
-	cmd := exec.Command("setx", "path", os.Getenv("path")+";"+path)
-	var stderrText bytes.Buffer
-	cmd.Stderr = &stderrText
-	err := cmd.Run()
-	if err != nil && strings.Contains(stderrText.String(), "denied") {
-		logs.LogWarning("App has no access to path variable, so, run next command and relaunch console for using command `todos.exe`\n(!!! Run with admin rights !!!)\n")
-		fmt.Println(`setx path "%path%;` + path + `"`)
-		return
-	}
-	logs.LogError(err)
-
-	logs.LogSuccess("Relaunch console to update Path variables\n\tThen you are able to run app with `todos`\n\tEnjoy)\n")
-	os.Exit(0)
 }
 
 var dataFile files.File
@@ -154,8 +123,6 @@ func doRequest(query []string) {
 		os.Exit(0)
 	case "path":
 		logs.LogSuccess(path, "\n")
-	case "command":
-		executeDoskey()
 	case "autosort":
 		settingsData.AutoSort = !settingsData.AutoSort
 		data, err := json.MarshalIndent(settingsData, "", "\t")
@@ -381,6 +348,9 @@ func init() {
 	}
 
 	helpData = table.NewWriter()
+	helpData.Style().Options.DrawBorder = false
+	helpData.Style().Options.SeparateColumns = false
+	helpData.Style().Options.SeparateHeader = false
 	helpData.AppendRows([]table.Row{
 		{"exit", "", ""},
 		{"help", "", "prints help"},
@@ -397,13 +367,6 @@ func init() {
 		{"delete", "{ID_1 ID_2 ID_3...}", "deletes Todo"},
 		{"edit", "{ID} {Field} {Value}", "edits Todo"},
 	})
-	helpData.SetColumnConfigs([]table.ColumnConfig{
-		{Number: 1, Align: text.AlignRight},
-		{Number: 2, Align: text.AlignCenter},
-	})
-	helpData.SetStyle(table.StyleLight)
-	helpData.Style().Options.SeparateRows = true
-	helpData.Style().Options.DrawBorder = false
 
 	tempData, err := settingsFile.Read()
 	logs.LogError(err)

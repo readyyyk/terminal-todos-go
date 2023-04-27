@@ -1,14 +1,37 @@
-# Golang project - terminal todos app
+# Golang - CLI todos app
+![example](./assets/todo-ex.png)
 
-## Temporary project that will be divided into API and Terminal app
+# Installation
 
-Now to start using app u should start ***bin/todos.exe || bin/todos*** from app directory and type `command` to set command `todos` that can be executed anywhere from console that will start the app.
+### Downloading binary from releases
+1. download latest binary from releases
+2. to make tokens accessible from anywhere type:
+```bash
+$ # rename executable you downloaded to "todos"
+$ mv todos-linux-amd64 todos # example
+$ chmod 777 todos
+$ echo -e "\nPATH+=\"$(pwd)\"\n" >> ~/.bashrc
+```
+
+### Custom make
+```bash
+git clone https://github.com/readyyyk/terminal-todos-go
+```
+```bash
+cd terminal-todos-go
+```
+```bash
+make
+```
+```bash
+make install
+```
+
 
 | command    | arguments                     | description                                                              |
 |------------|-------------------------------|--------------------------------------------------------------------------|
 | exit       |                               |                                                                          |
 | help       |                               | prints help                                                              |
-| command    |                               | program can be executed from any directory using `todos`                 |
 | colors     |                               | toggle enable or disable color usage                                     |
 | autosort   |                               | toggle enable or disable automatic sorting with field in last `sort`     |
 | autoclear  |                               | toggle enable or disable automatic clearing screen                       |
@@ -25,11 +48,6 @@ _duration format is: {\_}h{\_}m (for example 12h30m, or 1h1m, but not 1d12h)_
 
 _for lines with spaces use "" for exmaple "buy bread, milk, smth else"_
 
-> Command `command` adds PATH
-
 ### Coming soon
 - Saving data on virtual server.
-- Customisation (such as colors, log prefixes, and other)
-
-### Examples
-![example](./assets/todo-ex.png)
+- Default CLI usage
